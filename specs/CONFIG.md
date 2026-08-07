@@ -27,6 +27,21 @@ hora de gerar o bundle. Mudar o `.env` depois do build não muda nada — precis
 navegador. Chave de API do Firebase pode ir (é pública por design); senha, chave de service
 account ou token de admin, nunca. Ver [`BACKEND.md`](BACKEND.md).
 
+### `VITE_DATABASE_TARGET_ENV`
+
+Diz em qual ramo do Realtime Database o app grava: `staging` ou `production`.
+
+| Onde | Valor |
+|------|-------|
+| Sua máquina (`.env`) | `staging` |
+| Deploy de teste no Netlify | `staging` |
+| Deploy de produção | `production` |
+
+O padrão, quando a variável falta, é `staging`. Isso é escolha de segurança: esquecer de
+configurar faz o app escrever no ramo de teste, e não em cima dos dados reais.
+
+Como é variável de build, **mudar o valor no Netlify exige um novo deploy** para ter efeito.
+
 ### Arquivos
 
 | Arquivo | Vai para o Git? | Para que serve |

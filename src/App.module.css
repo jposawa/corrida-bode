@@ -1,31 +1,126 @@
+/**
+ * Casca do app e definição dos temas.
+ * Os tokens de cor moram aqui porque mudam junto com a classe de tema.
+ * Ver `specs/STYLING.md`.
+ */
+
 .appContainer {
-	position: absolute;
-	width: 100%;
-	height: 100%;
+	min-height: 100svh;
 	display: flex;
+	/* column-reverse deixa o menu embaixo no celular, na altura do polegar. */
 	flex-direction: column-reverse;
-  color: var(--color-text);
-  background: var(--color-background);
+	color: var(--color-text);
+	background-color: var(--color-bg);
+	transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-.mainContainer {
-	position: relative;
-	width: 100%;
-	height: 100%;
+.contentContainer {
+	display: flex;
+	flex-direction: column;
+	/* Ocupa a altura que sobrar do menu. */
+	flex-grow: 1;
+	/* min-width: 0 impede que um filho largo (tabela, bloco de código) estique
+	   o container além da tela. Item de flex não encolhe abaixo do conteúdo sem isso. */
+	min-width: 0;
 }
 
-.light {
-  --color-text: var(--color-dark);
-  --color-background: var(--color-light);
+.topBar {
+	padding: var(--space-3) var(--space-4);
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	gap: var(--space-3);
 }
 
-.dark {
-  --color-text: var(--color-light);
-  --color-background: var(--color-dark);
-}
-
-@media screen and (min-width: 900px) {
+@media (min-width: 900px) {
 	.appContainer {
 		flex-direction: row;
 	}
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Tema claro
+   ───────────────────────────────────────────────────────────── */
+
+.light {
+	color-scheme: light;
+
+	/* — camadas de fundo — */
+	--color-bg: #ffffff;
+	--color-bg-elevated: #fafaf9;
+	--color-surface: #f5f5f4;
+
+	/* — texto — */
+	--color-text: #44403c;
+	--color-text-strong: #1c1917;
+	--color-text-muted: #78716c;
+	--color-text-disabled: #a8a29e;
+	--color-text-on-primary: #ffffff;
+
+	/* — borda — */
+	--color-border: #e7e5e4;
+
+	/* — primária: laranja queimado — */
+	--color-primary: #c2410c;
+	--color-primary-bg: rgba(194, 65, 12, 0.08);
+	--color-primary-border: rgba(194, 65, 12, 0.4);
+
+	/* — secundária: verde — */
+	--color-secondary: #15803d;
+	--color-secondary-bg: rgba(21, 128, 61, 0.08);
+	--color-secondary-border: rgba(21, 128, 61, 0.4);
+
+	/* — estados — */
+	--color-warning: #a16207;
+	--color-warning-bg: rgba(161, 98, 7, 0.1);
+	--color-error: #b91c1c;
+	--color-error-bg: rgba(185, 28, 28, 0.08);
+	--color-error-border: rgba(185, 28, 28, 0.4);
+
+	/* — sombra — */
+	--shadow-sm: rgba(0, 0, 0, 0.06) 0 1px 3px 0;
+	--shadow-md: rgba(0, 0, 0, 0.1) 0 4px 6px -2px, rgba(0, 0, 0, 0.05) 0 10px 15px -3px;
+	--shadow-lg: rgba(0, 0, 0, 0.15) 0 20px 25px -5px, rgba(0, 0, 0, 0.08) 0 10px 10px -5px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Tema escuro
+
+   Os hex da primária e da secundária são DIFERENTES do tema claro.
+   Não é inconsistência: #c2410c sobre fundo escuro perde contraste e
+   fica ilegível. O tom mais claro devolve a legibilidade.
+   ───────────────────────────────────────────────────────────── */
+
+.dark {
+	color-scheme: dark;
+
+	--color-bg: #16171d;
+	--color-bg-elevated: #1e1f28;
+	--color-surface: #242530;
+
+	--color-text: #b0aeb8;
+	--color-text-strong: #f5f5f4;
+	--color-text-muted: #8a8792;
+	--color-text-disabled: #56545e;
+	--color-text-on-primary: #16171d;
+
+	--color-border: #2e303a;
+
+	--color-primary: #fb923c;
+	--color-primary-bg: rgba(251, 146, 60, 0.12);
+	--color-primary-border: rgba(251, 146, 60, 0.4);
+
+	--color-secondary: #4ade80;
+	--color-secondary-bg: rgba(74, 222, 128, 0.12);
+	--color-secondary-border: rgba(74, 222, 128, 0.4);
+
+	--color-warning: #fbbf24;
+	--color-warning-bg: rgba(251, 191, 36, 0.12);
+	--color-error: #f87171;
+	--color-error-bg: rgba(248, 113, 113, 0.12);
+	--color-error-border: rgba(248, 113, 113, 0.4);
+
+	--shadow-sm: rgba(0, 0, 0, 0.25) 0 1px 3px 0;
+	--shadow-md: rgba(0, 0, 0, 0.4) 0 4px 6px -2px, rgba(0, 0, 0, 0.25) 0 10px 15px -3px;
+	--shadow-lg: rgba(0, 0, 0, 0.5) 0 20px 25px -5px, rgba(0, 0, 0, 0.3) 0 10px 10px -5px;
 }

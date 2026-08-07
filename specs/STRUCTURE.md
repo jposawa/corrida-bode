@@ -84,8 +84,10 @@ pages/
     index.js
 ```
 
-> As páginas atuais (`Home.jsx`, `Contact.jsx`) são resquício do template e ainda estão soltas,
-> sem pasta. Migrar quando forem mexidas de verdade.
+Existe uma rota curinga `*` no fim do `AppRouter`, apontando para a página `NotFound`.
+Ela é obrigatória por causa do `public/_redirects`: no Netlify **qualquer** caminho entrega o
+`index.html`, então quem trata endereço inválido é o react-router, não o servidor. Sem ela, um
+endereço errado mostraria tela em branco.
 
 #### O elemento raiz da página
 
@@ -114,8 +116,6 @@ O `App.jsx` **não** deve renderizar `<main>` — ele monta a casca do app (menu
 scroll) com uma `<div>` comum. HTML permite só um `<main>` visível por documento, e o roteamento
 SPA respeita isso naturalmente, já que só uma página é renderizada por vez.
 
-> Hoje o `App.jsx` ainda renderiza um `<main>` herdado do template. Corrigir junto com a
-> migração das páginas.
 
 ### `hooks/`
 
@@ -126,10 +126,15 @@ Só exports nomeados — nada de `export default`.
 
 ```
 hooks/
-  useAuth.js
-  useRegistrationForm.js
-  index.js     ← re-exporta tudo: export * from "./useXxx"
+  useAuth.js           ← lê o estado de login, expõe entrar/sair
+  useAuthListener.js   ← registra o observador do Firebase
+  index.js             ← re-exporta tudo: export * from "./useXxx"
 ```
+
+> **`useAuthListener` é chamado uma única vez, no `App.jsx`.** Cada chamada registra um
+> observador novo no Firebase; usado em várias telas, criaria observadores duplicados escrevendo
+> no mesmo atom. Ler quem está logado é papel do `useAuth`, que não registra nada e pode ser
+> usado à vontade.
 
 ### `services/`
 
@@ -141,10 +146,14 @@ Ver [`BACKEND.md`](BACKEND.md).
 
 ```
 services/
-  registrationService.js
-  authService.js
+  databaseService.js   ← leitura/escrita genérica, trata nó ausente
+  authService.js       ← login com Google
+  userService.js       ← cadastro em users/{uid}
   index.js
 ```
+
+`databaseService` é a base dos outros: nenhum service fala com o Firebase por fora dele, para
+que o tratamento de "nó que não existe" fique num lugar só. Ver [`BACKEND.md`](BACKEND.md).
 
 ### `helpers/`
 

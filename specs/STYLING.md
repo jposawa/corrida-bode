@@ -5,9 +5,11 @@
 `src/index.css` define os tokens globais. Os CSS Modules (`.module.css`) consomem esses tokens.
 Nunca escrever valor de design cru dentro de um módulo — sempre referenciar uma variável.
 
-> **Estado atual:** o `index.css` ainda tem só o punhado de variáveis que veio do template.
-> A lista completa abaixo é o alvo. Ir preenchendo conforme as telas forem construídas — não
-> vale a pena declarar cinquenta tokens antes de existir tela que use.
+Onde cada coisa mora:
+
+- `src/index.css` — tokens que **não** mudam com o tema (espaçamento, fontes, raio, z-index),
+  registros `@property` e o reset.
+- `src/App.module.css` — tokens de **cor**, dentro das classes `.light` e `.dark`.
 
 ---
 
@@ -30,84 +32,50 @@ O `theme` vale `"light"` ou `"dark"`, e casa com as classes `.light` / `.dark` d
 ### Por que as cores mudam entre os temas
 
 Primária e secundária usam **valores hex diferentes** em cada tema — isso não é inconsistência,
-é exigência de contraste. `#0070E0` sobre branco passa no WCAG AA (~4.8:1). O mesmo azul sobre
-`#16171d` cai para ~3.0:1 e reprova. Um tom mais claro devolve a legibilidade.
+é exigência de contraste. `#c2410c` sobre branco dá ~5.2:1 e passa no WCAG AA. O mesmo laranja
+sobre `#16171d` despenca e reprova; o `#fb923c` do tema escuro devolve a legibilidade (~7.9:1).
 Mesma identidade, luminância diferente conforme o fundo.
 
-> A paleta abaixo é a que veio do template e serve como ponto de partida. As cores da Corrida
-> do Bode ainda não foram definidas — quando forem, trocar os valores mantendo os nomes dos
-> tokens. Nenhum componente precisa mudar.
+Contraste de cada par, medido contra o fundo do próprio tema:
+
+| Token | Claro | Escuro |
+|-------|-------|--------|
+| `--color-primary` | `#c2410c` — 5.2:1 | `#fb923c` — 7.9:1 |
+| `--color-secondary` | `#15803d` — 5.0:1 | `#4ade80` — 10.3:1 |
+| `--color-error` | `#b91c1c` — 6.5:1 | `#f87171` |
+| `--color-warning` | `#a16207` — 4.9:1 | `#fbbf24` |
+
+> **Ao trocar uma cor, medir o contraste nos dois temas.** Um hex que fica bonito no claro
+> costuma sumir no escuro. O piso é 4.5:1 para texto normal.
+
+**A lista completa de valores está em `src/App.module.css`, e é ela que vale.** Repetir os
+hex aqui criaria dois lugares para atualizar, e um deles ficaria desatualizado. O formato é este:
 
 ```css
-/* ─── Tokens que não mudam com o tema (index.css) ─── */
-:root {
-  --border-radius-md: 8px;
-  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
-  --space-4: 1rem;
-  /* ... */
-}
-
-/* ─── Tema claro (App.module.css) ─── */
+/* App.module.css */
 .light {
   color-scheme: light;
-  background: var(--color-bg);
-  color: var(--color-text);
 
-  /* — camadas de fundo — */
   --color-bg: #ffffff;
-  --color-bg-elevated: #f9f9fb;
-  --color-surface: #f4f3ec;
-
-  /* — texto — */
-  --color-text: #6b6375;
-  --color-text-strong: #08060d;
-  --color-text-muted: #9ca3af;
-  --color-text-disabled: #c4c4c4;
-
-  /* — borda — */
-  --color-border: #e5e4e7;
-
-  /* — primária — */
-  --color-primary: #0070e0;
-  --color-primary-bg: rgba(0, 112, 224, 0.08);
-  --color-primary-border: rgba(0, 112, 224, 0.4);
-
-  /* — secundária — */
-  --color-secondary: #0ea472;
-  --color-secondary-bg: rgba(14, 164, 114, 0.08);
-  --color-secondary-border: rgba(14, 164, 114, 0.4);
-
-  /* — sombra — */
-  --shadow-sm: rgba(0, 0, 0, 0.06) 0 1px 3px 0;
-  --shadow-md: rgba(0, 0, 0, 0.1) 0 4px 6px -2px, rgba(0, 0, 0, 0.05) 0 10px 15px -3px;
-  --shadow-lg: rgba(0, 0, 0, 0.15) 0 20px 25px -5px, rgba(0, 0, 0, 0.08) 0 10px 10px -5px;
+  --color-bg-elevated: #fafaf9;
+  --color-surface: #f5f5f4;
+  /* ...texto, borda, primária, secundária, estados, sombra... */
 }
 
-/* ─── Tema escuro (App.module.css) ─── */
 .dark {
   color-scheme: dark;
-  background: var(--color-bg);
-  color: var(--color-text);
 
   --color-bg: #16171d;
-  --color-bg-elevated: #1e1f28;
-  --color-surface: #1f2028;
-  --color-text: #9ca3af;
-  --color-text-strong: #f3f4f6;
-  --color-text-muted: #6b7280;
-  --color-text-disabled: #4b5563;
-  --color-border: #2e303a;
-  --color-primary: #4da3f5;
-  --color-primary-bg: rgba(77, 163, 245, 0.12);
-  --color-primary-border: rgba(77, 163, 245, 0.4);
-  --color-secondary: #2dc88a;
-  --color-secondary-bg: rgba(45, 200, 138, 0.12);
-  --color-secondary-border: rgba(45, 200, 138, 0.4);
-  --shadow-sm: rgba(0, 0, 0, 0.25) 0 1px 3px 0;
-  --shadow-md: rgba(0, 0, 0, 0.4) 0 4px 6px -2px, rgba(0, 0, 0, 0.25) 0 10px 15px -3px;
-  --shadow-lg: rgba(0, 0, 0, 0.5) 0 20px 25px -5px, rgba(0, 0, 0, 0.3) 0 10px 10px -5px;
+  /* ...os mesmos nomes, outros valores... */
 }
 ```
+
+`color-scheme` não é decoração: é o que faz o navegador desenhar barra de rolagem, campos
+nativos e menus de `<select>` na cor certa. Sem ele, um `<select>` fica branco no tema escuro.
+
+Os dois temas precisam declarar **exatamente os mesmos nomes de token**. Um token que só existe
+em um dos temas vira valor vazio no outro, e o componente quebra em silêncio — sem erro no
+console, só uma cor que sumiu.
 
 ### Como nomear variável
 

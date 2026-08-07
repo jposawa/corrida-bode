@@ -3,7 +3,6 @@
 App de inscrições para a corrida. O participante se inscreve informando seus dados,
 escolhe a distância e o tamanho da camisa, e a organização acompanha as inscrições.
 
-A descrição original da ideia está em [IDEIA.md](IDEIA.md).
 As regras de domínio, padrões de código e decisões técnicas estão na pasta [specs/](specs/).
 
 ---
@@ -72,7 +71,8 @@ abrir pelo celular na mesma rede usando o IP que o Vite imprime no terminal.
 
 ```
 src/
-  components/    componentes de UI reutilizáveis
+  components/    peças de UI reutilizáveis e genéricas
+  fragments/     seções compostas que sabem do negócio (ex.: RegistrationForm)
   pages/         telas ligadas a uma rota
   hooks/         hooks React reutilizáveis (useXxx)
   services/      acesso ao Firebase (leitura/escrita de dados)
@@ -87,6 +87,51 @@ O detalhamento — o que pode e o que não pode morar em cada pasta — está em
 
 O alias `@/` aponta para `src/`, então `import { CustomButton } from "@/components"`
 funciona de qualquer arquivo.
+
+---
+
+## Deploy no Netlify
+
+**As configurações de build ficam no painel do Netlify**, não em arquivo. Comando `pnpm build`,
+pasta de publicação `dist`.
+
+> Não existe `netlify.toml` neste projeto de propósito. Se ele existisse, **sobrescreveria** o
+> que está configurado no painel — e aí a config visível na interface viraria decoração, sem
+> nenhum aviso. Uma fonte de verdade só.
+
+### As variáveis de ambiente precisam ser cadastradas no painel
+
+O `.env` **não** vai para o Git, então o Netlify não tem como adivinhar os valores.
+Cadastrar em *Site configuration → Environment variables*:
+
+```
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_DATABASE_URL
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+VITE_FIREBASE_MEASUREMENT_ID
+VITE_DATABASE_TARGET_ENV
+```
+
+Sem elas o build passa normalmente e o app quebra ao abrir — as variáveis são lidas no
+momento do build, não em tempo de execução.
+
+### Rotas que não são a raiz — `public/_redirects` é obrigatório
+
+O arquivo [public/_redirects](public/_redirects) manda qualquer caminho para o `index.html`
+com status 200. Sem ele, abrir `/inscricao` direto (ou dar F5 nessa página) daria 404, porque
+o Netlify procuraria um arquivo com esse nome no servidor.
+
+**Isto não é configurável pelo painel de build** — é um arquivo que precisa existir em
+`public/` para ser copiado para o `dist/`. Não apagar.
+
+### Depois do primeiro deploy
+
+Liberar o domínio do Netlify no Firebase: Console → Authentication → Settings →
+*Authorized domains*. Sem isso o login com Google funciona em `localhost` e falha em produção.
 
 ---
 

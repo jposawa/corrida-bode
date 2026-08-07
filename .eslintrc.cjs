@@ -16,5 +16,9 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    // Este projeto documenta os tipos com JSDoc, nao com a biblioteca prop-types.
+    // Manter a regra ligada obrigaria a escrever a mesma informacao duas vezes,
+    // e ainda adicionaria uma dependencia so para isso. Ver specs/STANDARDS.md.
+    'react/prop-types': 'off',
   },
 }

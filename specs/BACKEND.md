@@ -29,8 +29,26 @@ muda.
 O Realtime Database é **uma árvore JSON gigante**. Não tem tabela, não tem relação, não tem
 `JOIN`. A regra prática: **árvore rasa, dados duplicados quando ajudar a ler**.
 
+O primeiro nível é o **ambiente**, vindo de `VITE_DATABASE_TARGET_ENV`. Staging e produção
+convivem na mesma instância do banco, em ramos independentes — dá para testar à vontade sem
+sujar os dados reais, e sem precisar de um segundo projeto no Firebase.
+
 ```
 /
+├── staging/          ← ramo de teste (padrão)
+└── production/       ← ramo real
+    │
+    │  Os dois têm exatamente a mesma forma:
+    │
+├── users/
+│   └── {uid}/
+│       ├── uid: "abc123..."          ← repetido de propósito, ver abaixo
+│       ├── displayName: "Maria Silva"
+│       ├── email: "maria@..."
+│       ├── photoURL: "https://..."
+│       ├── createdAt: 1754524800000  ← só no primeiro login
+│       └── lastLoginAt: 1754524800000
+│
 ├── registrations/
 │   └── {registrationId}/
 │       ├── fullName: "Maria Silva"
@@ -58,6 +76,72 @@ O Realtime Database é **uma árvore JSON gigante**. Não tem tabela, não tem r
     ├── content: "..."
     └── updatedAt: 1754524800000
 ```
+
+Nenhum código monta esse caminho na mão. Quem monta é `buildDatabasePath()`
+(`src/helpers/database.js`), que já coloca o prefixo do ambiente:
+
+```js
+buildDatabasePath("registrations", registrationId)
+// → "staging/registrations/abc123"
+```
+
+O padrão do ambiente é `staging` de propósito. Se a variável faltar no build, o app grava no
+ramo de teste — o contrário, cair em produção por esquecimento, é o erro que não dá para
+desfazer.
+
+### Nó que não existe é o estado normal, não um erro
+
+O Realtime Database **não tem tabela**. Um nó passa a existir quando alguém grava algo nele —
+não dá para criar `users` vazio e deixar esperando. Consequência direta: ao trocar
+`VITE_DATABASE_TARGET_ENV` de `staging` para `production`, **todo o ramo está ausente** até a
+primeira escrita.
+
+Ler um caminho ausente **não dá erro**. O Firebase devolve um snapshot com `exists() === false`
+e `val() === null`. Quem quebra é o código que assume que veio objeto:
+
+```js
+// Quebra com "Cannot read properties of null" num ramo vazio
+const nome = snapshot.val().displayName
+```
+
+Por isso **nenhuma tela chama o Firebase direto**. Tudo passa por
+`src/services/databaseService.js`, que já resolve o caso ausente:
+
+| Função | Nó ausente devolve |
+|--------|--------------------|
+| `readNode(...)` | `null` |
+| `readNodeAsList(...)` | `[]` — nunca `null`, então dá `.map()` direto |
+| `nodeExists(...)` | `false` |
+| `updateNode(...)` | cria o caminho inteiro na escrita |
+
+A regra fica num lugar só, em vez de depender de cada chamada lembrar de checar.
+
+> **Isso vale para nó ausente, não para permissão negada.** Se a regra de segurança recusar a
+> leitura, o Firebase lança `PERMISSION_DENIED` — e esse erro **deve** subir, porque significa
+> regra errada ou não publicada. Engolir os dois casos juntos esconderia exatamente o defeito
+> que mais custa caro.
+
+### Por que o `uid` aparece duas vezes
+
+Em `users/{uid}`, o `uid` é a chave **e** um campo dentro do registro.
+
+No Realtime Database a chave existe só no caminho, nunca no valor. Ao ler uma coleção, o retorno
+é `{ abc: {...}, def: {...} }` — se o código pegar só os valores, ou passar um item adiante como
+objeto solto, a identidade fica para trás. Com o campo repetido, o registro se basta sozinho.
+
+A regra de segurança valida que o campo bate com a chave (`newData.val() === $userId`), então a
+duplicação não pode divergir. Sem essa validação, duplicar dado seria criar duas fontes de
+verdade — que é justamente o que não se quer.
+
+### Login e criação de conta são a mesma escrita
+
+Não existe fluxo separado de "criar conta". O Google resolve a identidade; do lado do app os
+dois casos gravam o mesmo registro. A única diferença é `createdAt`, definido apenas quando
+ainda não havia nada — `updateNode` mescla campos em vez de substituir o nó, então nada se perde.
+
+A escrita acontece no **login explícito**, não no observador de estado. O observador também
+dispara a cada recarga de página com sessão em cache, o que geraria uma escrita no banco a cada
+F5 sem nenhum ganho.
 
 ### Por que `registrationsByUser` existe
 
@@ -142,57 +226,92 @@ O que protege os dados são as **Regras de Segurança do Realtime Database**. Se
 
 Vão no Console do Firebase → Realtime Database → Regras.
 
+Tudo fica sob `$targetEnv`, que é uma **variável de caminho**: ela casa com o nome do ramo
+(`staging` ou `production`) e fica disponível dentro das regras. Assim o bloco é escrito uma vez
+e vale para os dois ambientes.
+
 ```json
 {
   "rules": {
-    "registrations": {
-      ".read": "root.child('admins').child(auth.uid).val() === true",
+    "$targetEnv": {
+      "users": {
+        "$userId": {
+          ".read": "auth != null && (auth.uid === $userId || root.child($targetEnv).child('admins').child(auth.uid).val() === true)",
+          ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')",
 
-      "$registrationId": {
-        ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+          ".validate": "newData.hasChildren(['uid'])",
 
-        ".write": "auth != null && (
-          (!data.exists() && newData.child('userId').val() === auth.uid) ||
-          data.child('userId').val() === auth.uid ||
-          root.child('admins').child(auth.uid).val() === true
-        )",
+          "uid": { ".validate": "newData.val() === $userId" },
+          "email": { ".validate": "newData.isString()" },
+          "displayName": { ".validate": "newData.isString()" },
+          "photoURL": { ".validate": "newData.isString()" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "lastLoginAt": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
+      },
 
-        "paymentStatus": {
-          ".write": "root.child('admins').child(auth.uid).val() === true"
-        },
-        "isDonationDelivered": {
-          ".write": "root.child('admins').child(auth.uid).val() === true"
-        },
+      "registrations": {
+        ".read": "root.child($targetEnv).child('admins').child(auth.uid).val() === true",
 
-        ".validate": "newData.hasChildren(['fullName', 'phone', 'city', 'shirtSize', 'distance', 'userId'])",
+        "$registrationId": {
+          ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child($targetEnv).child('admins').child(auth.uid).val() === true)",
 
-        "shirtSize": { ".validate": "newData.val().matches(/^(P|M|G|GG)$/)" },
-        "distance":  { ".validate": "newData.val() === 3 || newData.val() === 5 || newData.val() === 10" },
-        "userId":    { ".validate": "newData.val() === auth.uid || root.child('admins').child(auth.uid).val() === true" }
+          ".write": "auth != null && ($targetEnv === 'staging' || $targetEnv === 'production') && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid || root.child($targetEnv).child('admins').child(auth.uid).val() === true)",
+
+          "paymentStatus": {
+            ".write": "root.child($targetEnv).child('admins').child(auth.uid).val() === true"
+          },
+          "isDonationDelivered": {
+            ".write": "root.child($targetEnv).child('admins').child(auth.uid).val() === true"
+          },
+
+          ".validate": "newData.hasChildren(['fullName', 'phone', 'city', 'shirtSize', 'distance', 'userId'])",
+
+          "shirtSize": { ".validate": "newData.val().matches(/^(P|M|G|GG)$/)" },
+          "distance":  { ".validate": "newData.val() === 3 || newData.val() === 5 || newData.val() === 10" },
+          "userId":    { ".validate": "newData.val() === auth.uid || root.child($targetEnv).child('admins').child(auth.uid).val() === true" }
+        }
+      },
+
+      "registrationsByUser": {
+        "$userId": {
+          ".read": "auth.uid === $userId || root.child($targetEnv).child('admins').child(auth.uid).val() === true",
+          ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')"
+        }
+      },
+
+      "admins": {
+        ".read": false,
+        ".write": false
+      },
+
+      "eventInfo": {
+        ".read": true,
+        ".write": "root.child($targetEnv).child('admins').child(auth.uid).val() === true"
       }
-    },
-
-    "registrationsByUser": {
-      "$userId": {
-        ".read": "auth.uid === $userId || root.child('admins').child(auth.uid).val() === true",
-        ".write": "auth.uid === $userId"
-      }
-    },
-
-    "admins": {
-      ".read": false,
-      ".write": false
-    },
-
-    "eventInfo": {
-      ".read": true,
-      ".write": "root.child('admins').child(auth.uid).val() === true"
     }
   }
 }
 ```
 
+> **A checagem `$targetEnv === 'staging' || 'production'` está dentro do `.write`, não num
+> `.validate` no nível de cima — e isso é de propósito.** Regra `.validate` só é avaliada no nó
+> escrito e nos filhos dele; **regra de ancestral não é reavaliada**. Um `.validate` em
+> `$targetEnv` não seria consultado ao gravar em `$targetEnv/registrations/{id}`, e daí qualquer
+> pessoa logada poderia criar um ramo `/lixo/registrations/...` só mudando o caminho. Dentro do
+> `.write` a checagem roda, porque a regra de escrita avaliada é a do caminho gravado.
+
 ### O que cada decisão está segurando
+
+**Cada pessoa só escreve o próprio `users/{uid}`.** `auth.uid === $userId` amarra a escrita à
+chave, então ninguém sobrescreve o registro de outro. O `.validate` do campo `uid` fecha o
+cerco: o valor gravado tem que ser igual à chave, e a duplicação nunca diverge.
+
+**`"$other": { ".validate": false }` recusa campo desconhecido.** Sem isso, qualquer pessoa
+logada poderia enfiar dado arbitrário dentro do próprio registro e usar o banco como depósito.
+O preço é que **acrescentar um campo novo em `users` exige atualizar as regras junto** — é
+proposital: campo novo em dado de usuário merece uma decisão consciente.
 
 **Ler `/registrations` inteiro só admin.** A permissão de ler a lista completa e a de ler uma
 inscrição específica são separadas de propósito. Participante lê a dele; organização lê todas.
@@ -221,8 +340,10 @@ preenche; ela não protege nada, porque a requisição pode ser feita fora do ap
    negado** — ou, pior, começa aberto. Conferir no Console qual dos dois está valendo.
 2. **Testar com uma segunda conta Google.** Regra errada não dá erro: só devolve mais dado do
    que devia. Entrar com outra conta e confirmar que ela não vê a inscrição da primeira.
-3. **Cadastrar os admins à mão.** Console → Realtime Database → criar `admins/{uid}: true`.
-   O UID aparece no Console → Authentication → Users.
+3. **Cadastrar os admins à mão, nos dois ambientes.** Console → Realtime Database → criar
+   `staging/admins/{uid}: true` **e** `production/admins/{uid}: true`. São ramos independentes:
+   ser admin no staging não dá nenhum poder em produção. O UID aparece no Console →
+   Authentication → Users.
 4. **Autorizar o domínio de produção.** Console → Authentication → Settings → Authorized
    domains. Sem isso o login funciona em `localhost` e falha em produção.
 

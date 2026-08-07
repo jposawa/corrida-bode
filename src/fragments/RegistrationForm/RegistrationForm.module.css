@@ -1,0 +1,55 @@
+.form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.fieldGrid {
+	display: grid;
+	/* Uma coluna no celular; a media query abre para duas no desktop. */
+	grid-template-columns: 1fr;
+	gap: var(--space-4);
+}
+
+/* Ocupa a linha inteira do grid, independente de quantas colunas existirem. */
+.fullWidth {
+	grid-column: 1 / -1;
+}
+
+.errorSummary {
+	padding: var(--space-3) var(--space-4);
+	background-color: var(--color-error-bg);
+	color: var(--color-error);
+	border: 1px solid var(--color-error-border);
+	border-radius: var(--border-radius-md);
+	font-size: var(--text-sm);
+	font-weight: 600;
+}
+
+.optionalIntro {
+	font-size: var(--text-sm);
+	color: var(--color-text-muted);
+}
+
+.donationNote {
+	font-size: var(--text-sm);
+}
+
+.warning {
+	padding: var(--space-3);
+	background-color: var(--color-warning-bg);
+	color: var(--color-text-strong);
+	border-left: 3px solid var(--color-warning);
+	border-radius: var(--border-radius-sm);
+	font-size: var(--text-sm);
+}
+
+.submit {
+	font-size: var(--text-lg);
+}
+
+@media (min-width: 900px) {
+	.fieldGrid {
+		grid-template-columns: 1fr 1fr;
+	}
+}

@@ -9,7 +9,9 @@ App de inscrição para a **Corrida do Bode**. Duas pessoas usam o app, com nece
 - **Organização** — vê a lista de inscritos, confirma pagamento e entrega da doação, e precisa
   saber quantas camisas de cada tamanho encomendar.
 
-A fonte original da ideia está em [`IDEIA.md`](../IDEIA.md) na raiz do projeto.
+**Este arquivo é a fonte da verdade do domínio.** A descrição solta que originou o projeto foi
+absorvida aqui e não existe mais no repositório — o que não estiver escrito neste documento não
+está decidido.
 
 ---
 
@@ -85,15 +87,32 @@ sozinha. Ver as regras do Realtime Database em [`BACKEND.md`](BACKEND.md).
 
 ### `User` — a pessoa logada
 
-Vem do Firebase Authentication (login com Google). Não é uma entidade nossa: não temos
-tabela de usuário, não guardamos senha, não editamos perfil.
+A identidade vem do Firebase Authentication (login com Google) — não guardamos senha, e não
+existe tela de cadastro nem de edição de perfil.
 
-O que usamos do objeto do Firebase: `uid`, `displayName`, `email`, `photoURL`.
+O que o app **guarda** é um espelho do perfil, em `users/{uid}`:
 
-**A pessoa logada não é a inscrição.** O login serve para *ligar* uma inscrição a uma pessoa
-(e para a pessoa poder rever a sua), não para preencher o formulário. O nome da inscrição é
-digitado pelo participante — pode ser diferente do nome da conta Google, e alguém pode
-inscrever um familiar da própria conta.
+| Campo | Observação |
+|-------|------------|
+| `uid` | Chave do registro **e** campo dentro dele |
+| `displayName` | Vem do Google. Pode não existir |
+| `email` | Vem do Google |
+| `photoURL` | Vem do Google. Pode não existir |
+| `createdAt` | Definido só no primeiro login |
+| `lastLoginAt` | Atualizado a cada login explícito |
+
+**Entrar e criar conta são a mesma operação.** O Google resolve quem a pessoa é; do lado do app
+os dois casos gravam o mesmo registro, e a única diferença é o `createdAt`, que não é
+sobrescrito depois da primeira vez.
+
+**O `uid` aparece duas vezes de propósito.** No Realtime Database a chave existe só no caminho,
+nunca no valor — um registro passado adiante como objeto solto perderia a identidade. A regra de
+segurança valida que os dois batem. Detalhe em [`BACKEND.md`](BACKEND.md).
+
+**A pessoa logada não é a inscrição.** Espelhar o perfil não muda isso. O login serve para
+*ligar* uma inscrição a uma pessoa (e para ela poder rever a sua), não para preencher o
+formulário. O nome da inscrição é digitado pelo participante — pode ser diferente do nome da
+conta Google, e alguém pode inscrever um familiar da própria conta.
 
 ### `Admin` — quem organiza
 
@@ -108,9 +127,9 @@ não pode ser alterada por nenhum código do app, nem por acidente nem de propó
 Endereço, data, horário de largada, como funciona o dia. Um único registro, escrito pela
 organização e lido por todo mundo.
 
-Está no `IDEIA.md` como "terá mais informações" — ou seja, o conteúdo ainda não foi definido.
-Modelar como texto livre por enquanto, e só criar campos separados quando as informações reais
-existirem. Inventar estrutura antes de ter o conteúdo é decidir errado com confiança.
+O conteúdo real ainda não foi definido — só se sabe que vai existir. Modelar como texto livre
+por enquanto, e só criar campos separados quando as informações existirem de fato. Inventar
+estrutura antes de ter o conteúdo é decidir errado com confiança.
 
 ---
 
@@ -152,7 +171,7 @@ número ordena certo sem depender de fuso ou formato de string.
 
 | Etapa | Escopo |
 |-------|--------|
-| 1 | Login com Google + formulário de inscrição + "minha inscrição" |
+| 1 | Login com Google + cadastro em `users` ✅ · formulário de inscrição (falta gravar) · "minha inscrição" |
 | 2 | Painel da organização — lista de inscritos, confirmar pagamento e doação |
 | 3 | Página de informações do evento |
 | 4 | Resumo para a organização: total por tamanho de camisa e por distância |

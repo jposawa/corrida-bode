@@ -1,0 +1,10 @@
+# Netlify — redirecionamento de SPA.
+#
+# O react-router cuida das rotas no navegador, mas o Netlify não sabe disso: ao abrir
+# /inscricao direto na barra de endereço (ou dar F5 nessa página), ele procura um arquivo
+# chamado "inscricao" no servidor, não acha, e devolve 404.
+#
+# A linha abaixo diz: qualquer caminho -> entrega o index.html, com status 200.
+# O 200 (e não 301/302) é o que importa: a URL continua sendo /inscricao no navegador,
+# e aí o react-router assume e renderiza a página certa.
+/*    /index.html   200

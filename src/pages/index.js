@@ -1,3 +1,5 @@
 export * from "./AppRouter";
-export * from "./Contact";
+export * from "./Event";
 export * from "./Home";
+export * from "./NotFound";
+export * from "./Registration";

@@ -1,23 +1,155 @@
-:root {
-  --color-primary: #4f46e5;
-  --color-secondary: #9333ea;
-  --color-light: #ffffff;
-  --color-dark: #1f2937;
-  --color-darkest: #000000;
+/**
+ * Tokens globais e reset.
+ *
+ * Aqui ficam SÓ os tokens que não mudam com o tema (espaçamento, fonte, raio, z-index).
+ * Os tokens de COR ficam nas classes `.light` / `.dark` do `App.module.css`.
+ * Ver `specs/STYLING.md`.
+ */
+
+/* ─────────────────────────────────────────────────────────────
+   Registros @property
+   Sem isso o navegador trata a variável como texto opaco e não
+   consegue interpolar — a troca de tema vira um corte seco.
+   `initial-value` usa sempre o valor do tema claro.
+   ───────────────────────────────────────────────────────────── */
+
+@property --color-bg {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #ffffff;
+}
+@property --color-bg-elevated {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #fafaf9;
+}
+@property --color-surface {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #f5f5f4;
+}
+@property --color-text {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #44403c;
+}
+@property --color-text-strong {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #1c1917;
+}
+@property --color-border {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #e7e5e4;
+}
+@property --color-primary {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #c2410c;
+}
+@property --color-secondary {
+	syntax: "<color>";
+	inherits: true;
+	initial-value: #15803d;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Tokens que não mudam com o tema
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+	/* — tipografia — */
+	--font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+	--text-xs: 0.75rem;
+	--text-sm: 0.875rem;
+	--text-md: 1rem; /* corpo — nunca menor que isso em input, senão o iOS dá zoom */
+	--text-lg: 1.25rem;
+	--text-xl: 1.75rem;
+	--text-2xl: 2.5rem;
+	--text-3xl: 3.5rem;
+
+	/* — espaçamento — */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2rem;
+	--space-7: 3rem;
+	--space-8: 4rem;
+
+	/* — raio — */
+	--border-radius-sm: 4px;
+	--border-radius-md: 8px;
+	--border-radius-lg: 16px;
+	--border-radius-full: 999px;
+
+	/* — largura máxima de leitura — */
+	--layout-max-width: 720px;
+
+	/* — z-index — */
+	--z-menu: 10;
+	--z-overlay: 100;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Reset
+   ───────────────────────────────────────────────────────────── */
+
 * {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html {
+	font-family: var(--font-sans);
+	/* Impede o iOS de aumentar a fonte sozinho ao girar a tela. */
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	font-size: var(--text-md);
+	line-height: 1.5;
+	min-height: 100svh;
+}
+
+/* Elementos de formulário não herdam fonte por padrão — daí a repetição. */
+input,
+select,
+textarea,
+button {
+	font-family: inherit;
+	font-size: inherit;
+	color: inherit;
 }
 
 a {
-  color: inherit;
-  text-decoration: none;
+	color: inherit;
+	text-decoration: none;
+}
 
-  &:hover {
-    text-decoration: underline;
-  }
+a:hover {
+	text-decoration: underline;
+}
+
+h1,
+h2,
+h3 {
+	color: var(--color-text-strong);
+	line-height: 1.2;
+	text-wrap: balance;
+}
+
+/* Quem prefere menos movimento não recebe animação nenhuma. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms;
+		animation-iteration-count: 1;
+		transition-duration: 0.01ms;
+	}
 }

@@ -18,6 +18,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Configuração local do Claude Code (por máquina).
+# Arquivos *.local.json guardam permissões e caminhos absolutos de quem usa,
+# então não fazem sentido no repositório. Config de time (settings.json) pode
+# ser versionada normalmente.
+.claude/settings.local.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
