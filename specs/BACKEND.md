@@ -29,12 +29,34 @@ muda.
 O Realtime Database é **uma árvore JSON gigante**. Não tem tabela, não tem relação, não tem
 `JOIN`. A regra prática: **árvore rasa, dados duplicados quando ajudar a ler**.
 
-O primeiro nível é o **ambiente**, vindo de `VITE_DATABASE_TARGET_ENV`. Staging e produção
-convivem na mesma instância do banco, em ramos independentes — dá para testar à vontade sem
-sujar os dados reais, e sem precisar de um segundo projeto no Firebase.
+### A instância é compartilhada com outros projetos
+
+O banco `jprojetos` **não é exclusivo deste app**. Outros projetos moram na mesma instância, e a
+convenção da raiz é uma pasta por projeto:
 
 ```
 /
+├── dkmap/
+├── dknav/
+├── dkrpg/
+├── gustattoo/
+├── travellercomp/
+├── visaopolitica/
+└── corrida-bode/     ← o nosso
+```
+
+**Nada deste projeto pode ficar na raiz.** Um nó `staging/` solto lá seria ambíguo (staging de
+qual projeto?) e colidiria com qualquer outro app que escolhesse o mesmo nome. O nó do projeto
+vem de `APP_KEY`, e `buildDatabasePath()` o coloca sempre — não é opcional nem esquecível.
+
+### Dentro do nosso nó
+
+O segundo nível é o **ambiente**, vindo de `VITE_DATABASE_TARGET_ENV`. Staging e produção
+convivem em ramos independentes — dá para testar à vontade sem sujar os dados reais, e sem
+precisar de um segundo projeto no Firebase.
+
+```
+corrida-bode/
 ├── staging/          ← ramo de teste (padrão)
 └── production/       ← ramo real
     │
@@ -82,7 +104,7 @@ Nenhum código monta esse caminho na mão. Quem monta é `buildDatabasePath()`
 
 ```js
 buildDatabasePath("registrations", registrationId)
-// → "staging/registrations/abc123"
+// → "corrida-bode/staging/registrations/abc123"
 ```
 
 O padrão do ambiente é `staging` de propósito. Se a variável faltar no build, o app grava no
@@ -226,74 +248,97 @@ O que protege os dados são as **Regras de Segurança do Realtime Database**. Se
 
 Vão no Console do Firebase → Realtime Database → Regras.
 
-Tudo fica sob `$targetEnv`, que é uma **variável de caminho**: ela casa com o nome do ramo
-(`staging` ou `production`) e fica disponível dentro das regras. Assim o bloco é escrito uma vez
-e vale para os dois ambientes.
+> ## ⚠️ NÃO substituir as regras do banco inteiro
+>
+> A instância é compartilhada com `dkmap`, `dknav`, `dkrpg`, `gustattoo`, `travellercomp` e
+> `visaopolitica`. O Console tem **um único documento de regras para o banco todo**.
+>
+> Colar um `{ "rules": { ... } }` completo **apaga as regras de todos os outros projetos** —
+> sem confirmação e sem aviso. Dependendo do que estava lá, os outros apps ficam ou totalmente
+> abertos, ou totalmente travados.
+>
+> O bloco abaixo é um **pedaço**, para ser inserido dentro do `"rules"` que já existe, ao lado
+> das chaves dos outros projetos. Abra o Console, copie o conteúdo atual, acrescente esta chave
+> e salve o conjunto.
+
+Dentro do nosso nó, tudo fica sob `$targetEnv`, que é uma **variável de caminho**: ela casa com
+o nome do ramo (`staging` ou `production`) e fica disponível dentro das regras. Assim o bloco é
+escrito uma vez e vale para os dois ambientes.
 
 ```json
 {
   "rules": {
-    "$targetEnv": {
-      "users": {
-        "$userId": {
-          ".read": "auth != null && (auth.uid === $userId || root.child($targetEnv).child('admins').child(auth.uid).val() === true)",
-          ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')",
 
-          ".validate": "newData.hasChildren(['uid'])",
+    "COMENTARIO": "as chaves dos outros projetos continuam aqui, intactas",
 
-          "uid": { ".validate": "newData.val() === $userId" },
-          "email": { ".validate": "newData.isString()" },
-          "displayName": { ".validate": "newData.isString()" },
-          "photoURL": { ".validate": "newData.isString()" },
-          "createdAt": { ".validate": "newData.isNumber()" },
-          "lastLoginAt": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
+    "corrida-bode": {
+      "$targetEnv": {
+
+        "users": {
+          "$userId": {
+            ".read": "auth != null && (auth.uid === $userId || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
+            ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')",
+
+            ".validate": "newData.hasChildren(['uid'])",
+
+            "uid": { ".validate": "newData.val() === $userId" },
+            "email": { ".validate": "newData.isString()" },
+            "displayName": { ".validate": "newData.isString()" },
+            "photoURL": { ".validate": "newData.isString()" },
+            "createdAt": { ".validate": "newData.isNumber()" },
+            "lastLoginAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "registrations": {
+          ".read": "root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true",
+
+          "$registrationId": {
+            ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
+
+            ".write": "auth != null && ($targetEnv === 'staging' || $targetEnv === 'production') && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
+
+            "paymentStatus": {
+              ".write": "root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true"
+            },
+            "isDonationDelivered": {
+              ".write": "root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true"
+            },
+
+            ".validate": "newData.hasChildren(['fullName', 'phone', 'city', 'shirtSize', 'distance', 'userId'])",
+
+            "shirtSize": { ".validate": "newData.val().matches(/^(P|M|G|GG)$/)" },
+            "distance":  { ".validate": "newData.val() === 3 || newData.val() === 5 || newData.val() === 10" },
+            "userId":    { ".validate": "newData.val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true" }
+          }
+        },
+
+        "registrationsByUser": {
+          "$userId": {
+            ".read": "auth.uid === $userId || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true",
+            ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')"
+          }
+        },
+
+        "admins": {
+          ".read": false,
+          ".write": false
+        },
+
+        "eventInfo": {
+          ".read": true,
+          ".write": "root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true"
         }
-      },
-
-      "registrations": {
-        ".read": "root.child($targetEnv).child('admins').child(auth.uid).val() === true",
-
-        "$registrationId": {
-          ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child($targetEnv).child('admins').child(auth.uid).val() === true)",
-
-          ".write": "auth != null && ($targetEnv === 'staging' || $targetEnv === 'production') && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid || root.child($targetEnv).child('admins').child(auth.uid).val() === true)",
-
-          "paymentStatus": {
-            ".write": "root.child($targetEnv).child('admins').child(auth.uid).val() === true"
-          },
-          "isDonationDelivered": {
-            ".write": "root.child($targetEnv).child('admins').child(auth.uid).val() === true"
-          },
-
-          ".validate": "newData.hasChildren(['fullName', 'phone', 'city', 'shirtSize', 'distance', 'userId'])",
-
-          "shirtSize": { ".validate": "newData.val().matches(/^(P|M|G|GG)$/)" },
-          "distance":  { ".validate": "newData.val() === 3 || newData.val() === 5 || newData.val() === 10" },
-          "userId":    { ".validate": "newData.val() === auth.uid || root.child($targetEnv).child('admins').child(auth.uid).val() === true" }
-        }
-      },
-
-      "registrationsByUser": {
-        "$userId": {
-          ".read": "auth.uid === $userId || root.child($targetEnv).child('admins').child(auth.uid).val() === true",
-          ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')"
-        }
-      },
-
-      "admins": {
-        ".read": false,
-        ".write": false
-      },
-
-      "eventInfo": {
-        ".read": true,
-        ".write": "root.child($targetEnv).child('admins').child(auth.uid).val() === true"
       }
     }
   }
 }
 ```
+
+> O nome `corrida-bode` aparece escrito à mão dentro de cada `root.child(...)`. As regras do
+> Realtime Database são JSON puro — não existe variável nem função para reaproveitar. Se o
+> `APP_KEY` mudar, **todas** essas ocorrências mudam junto, e o app para de ler o que grava.
 
 > **A checagem `$targetEnv === 'staging' || 'production'` está dentro do `.write`, não num
 > `.validate` no nível de cima — e isso é de propósito.** Regra `.validate` só é avaliada no nó
@@ -336,14 +381,14 @@ preenche; ela não protege nada, porque a requisição pode ser feita fora do ap
 
 ### Antes de abrir para o público
 
-1. **Publicar as regras.** Um banco novo nasce em modo de teste, que **expira e vira acesso
-   negado** — ou, pior, começa aberto. Conferir no Console qual dos dois está valendo.
+1. **Publicar as regras — sem apagar as dos outros projetos.** Copiar o documento atual do
+   Console, acrescentar a chave `corrida-bode` e salvar o conjunto. Ver o aviso acima.
 2. **Testar com uma segunda conta Google.** Regra errada não dá erro: só devolve mais dado do
    que devia. Entrar com outra conta e confirmar que ela não vê a inscrição da primeira.
 3. **Cadastrar os admins à mão, nos dois ambientes.** Console → Realtime Database → criar
-   `staging/admins/{uid}: true` **e** `production/admins/{uid}: true`. São ramos independentes:
-   ser admin no staging não dá nenhum poder em produção. O UID aparece no Console →
-   Authentication → Users.
+   `corrida-bode/staging/admins/{uid}: true` **e** `corrida-bode/production/admins/{uid}: true`.
+   São ramos independentes: ser admin no staging não dá nenhum poder em produção. O UID aparece
+   no Console → Authentication → Users.
 4. **Autorizar o domínio de produção.** Console → Authentication → Settings → Authorized
    domains. Sem isso o login funciona em `localhost` e falha em produção.
 

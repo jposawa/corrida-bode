@@ -1,13 +1,29 @@
+import { APP_KEY } from "./app";
+
 /**
  * Caminhos da árvore do Realtime Database.
  *
- * O banco é uma árvore JSON só. Staging e produção convivem dentro da mesma
- * instância, separados pelo primeiro nível — `staging/registrations` e
- * `production/registrations` são ramos independentes.
+ * ## Esta instância é COMPARTILHADA entre vários projetos
  *
- * Assim dá para testar sem sujar os dados reais, sem precisar de um segundo
- * projeto no Firebase. Ver `specs/BACKEND.md` e `specs/CONFIG.md`.
+ * O banco `jprojetos` hospeda mais de um app, e a convenção é: **o primeiro nível
+ * da raiz é o nome do projeto**. Por isso tudo daqui pende de `corrida-bode/`.
+ *
+ * Gravar direto na raiz — `staging/...` em vez de `corrida-bode/staging/...` —
+ * criaria um nó ambíguo (staging de qual projeto?) que colidiria com qualquer
+ * outro app que usasse o mesmo nome.
+ *
+ * Dentro do nosso nó, o segundo nível é o ambiente:
+ *
+ * ```
+ * corrida-bode/staging/registrations
+ * corrida-bode/production/registrations
+ * ```
+ *
+ * Ver `specs/BACKEND.md` e `specs/CONFIG.md`.
  */
+
+/** Nó raiz do projeto dentro do banco compartilhado. */
+export const DATABASE_ROOT = APP_KEY;
 
 /**
  * Ambiente de dados alvo, vindo de `VITE_DATABASE_TARGET_ENV`.
