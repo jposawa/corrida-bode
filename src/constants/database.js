@@ -3,10 +3,11 @@ import { APP_KEY } from "./app";
 /**
  * Caminhos da árvore do Realtime Database.
  *
- * ## Esta instância é COMPARTILHADA entre vários projetos
+ * ## A raiz é uma pasta por projeto
  *
- * O banco `jprojetos` hospeda mais de um app, e a convenção é: **o primeiro nível
- * da raiz é o nome do projeto**. Por isso tudo daqui pende de `corrida-bode/`.
+ * Uma instância de Realtime Database costuma hospedar mais de um app, então a
+ * convenção é: **o primeiro nível da raiz é o nome do projeto**. Tudo daqui pende
+ * de `corrida-bode/`.
  *
  * Gravar direto na raiz — `staging/...` em vez de `corrida-bode/staging/...` —
  * criaria um nó ambíguo (staging de qual projeto?) que colidiria com qualquer

@@ -29,25 +29,26 @@ muda.
 O Realtime Database é **uma árvore JSON gigante**. Não tem tabela, não tem relação, não tem
 `JOIN`. A regra prática: **árvore rasa, dados duplicados quando ajudar a ler**.
 
-### A instância é compartilhada com outros projetos
+### A raiz é uma pasta por projeto
 
-O banco `jprojetos` **não é exclusivo deste app**. Outros projetos moram na mesma instância, e a
-convenção da raiz é uma pasta por projeto:
+**Nada deste app fica na raiz do banco.** Tudo pende de um nó com o nome do projeto:
 
 ```
 /
-├── dkmap/
-├── dknav/
-├── dkrpg/
-├── gustattoo/
-├── travellercomp/
-├── visaopolitica/
+├── ...outros apps, se houver...
 └── corrida-bode/     ← o nosso
+    ├── staging/
+    └── production/
 ```
 
-**Nada deste projeto pode ficar na raiz.** Um nó `staging/` solto lá seria ambíguo (staging de
-qual projeto?) e colidiria com qualquer outro app que escolhesse o mesmo nome. O nó do projeto
-vem de `APP_KEY`, e `buildDatabasePath()` o coloca sempre — não é opcional nem esquecível.
+O motivo é que **uma instância de Realtime Database costuma hospedar mais de um app**. Um nó
+`staging/` solto na raiz seria ambíguo (staging de qual projeto?) e colidiria com qualquer outro
+app que escolhesse o mesmo nome — os dois passariam a escrever na mesma árvore sem perceber.
+
+O nó vem de `APP_KEY`, e `buildDatabasePath()` o coloca sempre. Não é opcional nem esquecível.
+
+> Isto vale mesmo quando o banco parece exclusivo hoje. O custo de manter o prefixo é zero; o
+> custo de descobrir depois que ele faltava é migrar dado em produção.
 
 ### Dentro do nosso nó
 
@@ -248,18 +249,18 @@ O que protege os dados são as **Regras de Segurança do Realtime Database**. Se
 
 Vão no Console do Firebase → Realtime Database → Regras.
 
-> ## ⚠️ NÃO substituir as regras do banco inteiro
+> ## ⚠️ Conferir o que já existe antes de colar
 >
-> A instância é compartilhada com `dkmap`, `dknav`, `dkrpg`, `gustattoo`, `travellercomp` e
-> `visaopolitica`. O Console tem **um único documento de regras para o banco todo**.
+> O Console tem **um único documento de regras para o banco inteiro**. Colar um
+> `{ "rules": { ... } }` completo **substitui tudo** — sem confirmação, sem aviso, sem desfazer.
 >
-> Colar um `{ "rules": { ... } }` completo **apaga as regras de todos os outros projetos** —
-> sem confirmação e sem aviso. Dependendo do que estava lá, os outros apps ficam ou totalmente
-> abertos, ou totalmente travados.
+> Se a instância hospedar outros apps, as regras deles somem junto, e eles ficam ou totalmente
+> abertos, ou totalmente travados. **Abra o Console e olhe o conteúdo atual antes de qualquer
+> coisa.**
 >
-> O bloco abaixo é um **pedaço**, para ser inserido dentro do `"rules"` que já existe, ao lado
-> das chaves dos outros projetos. Abra o Console, copie o conteúdo atual, acrescente esta chave
-> e salve o conjunto.
+> O bloco abaixo é um **pedaço**: a chave `corrida-bode` entra dentro do `"rules"` que já existe,
+> ao lado do que estiver lá. Se não houver nada além do padrão, aí sim ele pode ser o documento
+> inteiro — bastando remover a linha `"COMENTARIO"`.
 
 Dentro do nosso nó, tudo fica sob `$targetEnv`, que é uma **variável de caminho**: ela casa com
 o nome do ramo (`staging` ou `production`) e fica disponível dentro das regras. Assim o bloco é
