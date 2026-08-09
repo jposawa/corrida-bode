@@ -22,5 +22,5 @@ export const DATABASE_NODES = {
 	registrations: "registrations",
 	registrationsByUser: "registrationsByUser",
 	admins: "admins",
-	eventInfo: "eventInfo",
+	raceEditions: "raceEditions",
 };

@@ -34,15 +34,44 @@ Por isso **não existe um campo único `confirmada`**. São dois estados separad
 
 ## Entidades
 
+### `RaceEdition` — a edição da corrida
+
+> **Planejado, não implementado.** Está aqui porque a decisão precisa ser tomada **antes** da
+> primeira inscrição ser gravada — ver "Por que decidir isso agora" no fim desta seção.
+
+A corrida se repete. Cada realização é uma edição, e é dela que penduram as inscrições.
+
+| Campo | Tipo | Observação |
+|-------|------|------------|
+| `id` | string | Legível, não gerado: `"2026"`, `"2026-2"`. Aparece na URL e no caminho do banco |
+| `name` | string | `"Corrida do Bode 2026"` |
+| `raceDate` | number | Timestamp do dia da corrida |
+| `location` | string | Endereço. Texto livre até existir motivo para separar |
+| `isRegistrationOpen` | boolean | Fecha inscrição sem mexer em código |
+| `distances` | number[] | Distâncias **desta** edição |
+| `shirtSizes` | string[] | Tamanhos **desta** edição |
+| `donationWeightKg` | number | Quilos de alimento exigidos |
+| `priceInfo` | string | Texto sobre valor e forma de pagamento. O app não cobra |
+
+**Distâncias, tamanhos e peso da doação são dados da edição, não constantes do código.** Hoje
+eles estão fixos em `constants/registration.js` — o que só funciona enquanto existe uma corrida
+só. Uma edição que ofereça 21 km, ou peça 3 kg, exigiria deploy. Quando `RaceEdition` entrar,
+essas listas saem de `constants/` e passam a ser lidas da edição.
+
+**Qual edição está valendo** vem de `clientConfig.currentEditionId`, não de "a mais recente".
+Ordenar por data e pegar a última chuta errado no intervalo entre uma edição e outra, e impede
+publicar a próxima edição antes de encerrar a atual.
+
 ### `Registration` — a inscrição
 
-O centro do app. Uma pessoa, uma inscrição.
+Uma pessoa, uma edição. Pertence a uma `RaceEdition` — não existe inscrição solta.
 
 **Campos obrigatórios** (sem eles não existe inscrição):
 
 | Campo | Tipo | Observação |
 |-------|------|------------|
 | `id` | string | Gerado pelo Firebase |
+| `editionId` | string | A qual edição pertence |
 | `fullName` | string | Nome completo |
 | `phone` | string | Guardar **só os dígitos** — a máscara é coisa da UI |
 | `city` | string | Cidade |
@@ -84,6 +113,24 @@ gambiarra de parsing. O `"km"` entra na hora de mostrar.
 **Só a organização escreve os campos de controle.** Isso não é convenção de código, é regra
 de segurança — se o cliente pudesse gravar `paymentStatus`, qualquer pessoa se aprovaria
 sozinha. Ver as regras do Realtime Database em [`BACKEND.md`](BACKEND.md).
+
+**Uma inscrição por pessoa por edição.** A mesma pessoa se inscreve todo ano, e cada inscrição é
+independente: em 2026 ela pode correr 5 km, em 2027 10 km. O que **não** pode é duas inscrições
+na mesma edição. Isso é garantido pela forma do índice, não por checagem no código — ver
+`registrationsByUser` em [`BACKEND.md`](BACKEND.md).
+
+**"Estou inscrito nesta edição?" é uma leitura direta**, não uma busca. O app lê
+`registrationsByUser/{uid}/{editionId}`: veio algo, está inscrito; veio nulo, não está. Sem
+varrer lista, e sem precisar de permissão para ler inscrição de terceiro.
+
+#### Por que decidir isso agora
+
+Nada de `registrations` foi gravado ainda. Acrescentar `editionId` e aninhar por edição agora
+custa **zero**: é editar spec.
+
+Depois da primeira inscrição real, o mesmo passo vira migração de dado em produção — reescrever
+todo registro, reconstruir o índice e trocar as regras, com gente já inscrita. É o tipo de campo
+que não se acrescenta "depois".
 
 ### `User` — a pessoa logada
 
@@ -127,14 +174,14 @@ Console do Firebase.
 Isso é proposital: ser admin é uma decisão de segurança, e uma lista editável só pelo Console
 não pode ser alterada por nenhum código do app, nem por acidente nem de propósito.
 
-### `EventInfo` — informações do evento
+### ~~`EventInfo`~~ — absorvido pela `RaceEdition`
 
-Endereço, data, horário de largada, como funciona o dia. Um único registro, escrito pela
-organização e lido por todo mundo.
+Havia uma entidade separada para endereço, data e "como funciona o dia". Ela deixou de fazer
+sentido quando as edições entraram: essas informações **mudam a cada edição**, então pertencem à
+edição.
 
-O conteúdo real ainda não foi definido — só se sabe que vai existir. Modelar como texto livre
-por enquanto, e só criar campos separados quando as informações existirem de fato. Inventar
-estrutura antes de ter o conteúdo é decidir errado com confiança.
+Um `EventInfo` global ao lado de `RaceEdition` seria endereço em dois lugares — e um deles
+ficaria desatualizado.
 
 ---
 
@@ -161,8 +208,9 @@ para saber qual dos campos está certo. Calcular na hora nunca desincroniza.
 **Nunca apagar inscrição.** Se alguém desistir, marcar `paymentStatus` como `rejected`. A
 organização precisa do histórico para acertar contas e conferir camisas encomendadas.
 
-**Camisa e distância são listas fechadas.** `P/M/G/GG` e `3/5/10` — a UI oferece só essas
-opções e o banco valida só essas. Campo livre aqui vira `"g"`, `"G "`, `"Gê"` na planilha final.
+**Camisa e distância são listas fechadas.** A UI oferece só as opções da edição. Campo livre
+aqui vira `"g"`, `"G "`, `"Gê"` na planilha final. Hoje as listas estão em `constants/`; passam a
+vir da `RaceEdition` quando ela existir.
 
 **Toda inscrição carrega `userId`.** É por ele que a regra de segurança decide quem pode ler e
 editar o quê. Sem ele, a inscrição fica órfã: ninguém consegue acessar, nem o dono.
@@ -176,14 +224,19 @@ número ordena certo sem depender de fuso ou formato de string.
 
 | Etapa | Escopo |
 |-------|--------|
-| 1 | Login com Google + cadastro em `users` ✅ · formulário de inscrição (falta gravar) · "minha inscrição" |
-| 2 | Painel da organização — lista de inscritos, confirmar pagamento e doação |
-| 3 | Página de informações do evento |
-| 4 | Resumo para a organização: total por tamanho de camisa e por distância |
+| 1 | Login com Google + cadastro em `users` ✅ |
+| 2 | `RaceEdition` — criar a edição no Console, ler dela as distâncias, tamanhos e datas |
+| 3 | Gravar a inscrição (já com `editionId`) + índice `registrationsByUser` + "minha inscrição" |
+| 4 | Painel da organização — lista de inscritos da edição, confirmar pagamento e doação |
+| 5 | Resumo: total por tamanho de camisa e por distância |
 
-A etapa 1 já grava os campos de controle (com `paymentStatus: "pending"` e
-`isDonationDelivered: false`), mesmo sem tela para editá-los. O formato dos dados é a parte
-cara de mudar depois; a tela de admin é barata.
+**A edição vem antes de gravar inscrição.** Não porque a tela dela seja urgente — ela nem
+precisa de tela, dá para criar o registro à mão no Console. É porque a inscrição precisa nascer
+com `editionId` e no caminho certo. Inverter a ordem significa migrar dado de gente já inscrita.
+
+A etapa 3 já grava os campos de controle (`paymentStatus: "pending"`,
+`isDonationDelivered: false`) mesmo sem tela para editá-los. Formato de dado é caro de mudar
+depois; tela de admin é barata.
 
 ---
 

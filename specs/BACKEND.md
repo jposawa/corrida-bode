@@ -52,8 +52,67 @@ corrida-bode/{env}/
         └── appTheme
 ```
 
-`registrations`, `registrationsByUser`, `admins` e `eventInfo` estão em
-[`DOMAIN.md`](DOMAIN.md) como modelo, mas **ainda não são gravados por nenhum código**.
+### Planejado, ainda não gravado por nenhum código
+
+```
+corrida-bode/{env}/
+├── clientConfig/
+│   └── currentEditionId: "2026"          ← qual edição está valendo
+│
+├── raceEditions/{editionId}/             ← "2026", "2026-2"
+│   ├── name, raceDate, location
+│   ├── isRegistrationOpen
+│   └── distances, shirtSizes, donationWeightKg
+│
+├── registrations/{editionId}/{registrationId}/
+│   └── ...campos da inscrição, ver DOMAIN.md
+│
+├── registrationsByUser/{uid}/{editionId}: "{registrationId}"
+│
+└── admins/{uid}: true
+```
+
+**Inscrições aninhadas por edição.** A consulta principal da organização é "todos os inscritos
+da edição X" — aninhado, é a leitura de uma subárvore. Achatado com `editionId` como campo,
+seria ler tudo que já houve e filtrar no cliente.
+
+**O índice usa `editionId` como chave, e guarda o `registrationId` como valor.** Duas coisas de
+uma vez:
+
+- `registrationsByUser/{uid}/{editionId}` responde "está inscrito nesta edição?" em uma leitura,
+  sem varrer lista e sem permissão para ler inscrição alheia
+- a chave sendo o `editionId` torna **impossível** haver duas inscrições da mesma pessoa na
+  mesma edição. Não é validação, é a forma da árvore
+
+Regras, quando chegar a hora:
+
+```json
+"raceEditions":       { ".read": true,  ".write": false },
+"registrations": {
+  "$editionId": {
+    ".read": "<admin>",
+    "$registrationId": {
+      ".read": "auth != null && (data.child('userId').val() === auth.uid || <admin>)",
+      ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid || <admin>)",
+      "paymentStatus":       { ".write": "<admin>" },
+      "isDonationDelivered": { ".write": "<admin>" }
+    }
+  }
+},
+"registrationsByUser": {
+  "$userId": {
+    ".read":  "auth.uid === $userId || <admin>",
+    ".write": "auth.uid === $userId"
+  }
+},
+"admins": { ".read": false, ".write": false }
+```
+
+`<admin>` é abreviação de
+`root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true`.
+
+`raceEditions` é público na leitura — a home mostra data e local antes de qualquer login — e
+fechado na escrita: edição se cria pelo Console.
 
 ### O `uid` aparece duas vezes
 
@@ -153,8 +212,8 @@ os dois.
 `".write": false` fecha para todo mundo: só muda pelo Console. É o que impede alguém fechar as
 inscrições do app pela API.
 
-As regras de `registrations`, `admins` e `eventInfo` entram quando essas telas existirem.
-Escrever regra para código que não existe é inventar decisão sem informação.
+As regras de `raceEditions`, `registrations` e `admins` estão esboçadas na seção "Planejado" e
+entram quando essas telas existirem.
 
 ### Não usamos `.validate`
 

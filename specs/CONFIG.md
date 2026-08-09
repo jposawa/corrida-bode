@@ -71,6 +71,7 @@ Valor que precisa mudar **sem deploy** vai no Realtime Database, no nó
 |-------|--------|-----------|
 | `isDebug` | `false` | Liga logs de diagnóstico |
 | `isRegistrationOpen` | `true` | Fecha as inscrições sem mexer no código |
+| `currentEditionId` | — | Qual edição está valendo. Planejado, ver [`DOMAIN.md`](DOMAIN.md) |
 
 Os padrões ficam em `BASE_CLIENT_CONFIG` (`constants/settings.js`) e valem enquanto o banco não
 responde ou quando o nó ainda não existe. O que vem do banco é mesclado por cima.
