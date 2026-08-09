@@ -20,11 +20,15 @@ Tokens **que não mudam com o tema** (espaçamento, fontes, raio, z-index) ficam
 no `index.css`.
 
 ```jsx
-// App.jsx — a classe vem do atom themeAtom (Recoil)
-const [theme] = useRecoilState(themeAtom)
+// App.jsx — a classe vem do hook de preferências
+const { theme } = useAppSettings()
 
 <div className={clsx(styles.appContainer, styles[theme])}>
 ```
+
+O tema é lido do `localStorage` **quando o módulo do atom carrega**, antes do primeiro render.
+Buscar esse valor dentro de um `useEffect` faria a tela aparecer no tema claro e trocar um
+instante depois — o clássico "flash" de tema errado.
 
 O `theme` vale `"light"` ou `"dark"`, e casa com as classes `.light` / `.dark` do
 `App.module.css`. Como é CSS Module, as classes ficam com escopo e não colidem com nada.

@@ -1,42 +1,21 @@
 import { APP_KEY } from "./app";
 
 /**
- * Caminhos da árvore do Realtime Database.
+ * A árvore é `{projeto}/{ambiente}/...`.
  *
- * ## A raiz é uma pasta por projeto
- *
- * Uma instância de Realtime Database costuma hospedar mais de um app, então a
- * convenção é: **o primeiro nível da raiz é o nome do projeto**. Tudo daqui pende
- * de `corrida-bode/`.
- *
- * Gravar direto na raiz — `staging/...` em vez de `corrida-bode/staging/...` —
- * criaria um nó ambíguo (staging de qual projeto?) que colidiria com qualquer
- * outro app que usasse o mesmo nome.
- *
- * Dentro do nosso nó, o segundo nível é o ambiente:
- *
- * ```
- * corrida-bode/staging/registrations
- * corrida-bode/production/registrations
- * ```
- *
- * Ver `specs/BACKEND.md` e `specs/CONFIG.md`.
+ * Uma instância de RTDB costuma hospedar mais de um app, então o nó do projeto
+ * não é opcional. Ver `specs/BACKEND.md`.
  */
 
-/** Nó raiz do projeto dentro do banco compartilhado. */
 export const DATABASE_ROOT = APP_KEY;
 
-/**
- * Ambiente de dados alvo, vindo de `VITE_DATABASE_TARGET_ENV`.
- *
- * O padrão é `staging` de propósito: se a variável faltar no build, o app grava
- * no ramo de teste. O contrário — cair em produção por esquecimento — é o erro
- * que não dá para desfazer.
- */
+// Padrão staging: variável faltando grava em teste, nunca em produção.
 export const DATABASE_TARGET_ENV =
 	import.meta.env.VITE_DATABASE_TARGET_ENV || "staging";
 
-/** Nós de primeiro nível dentro do ramo do ambiente. */
+/** Nó das preferências, dentro de `users/{uid}`. */
+export const USER_SETTINGS_NODE = "appSettings";
+
 export const DATABASE_NODES = {
 	users: "users",
 	registrations: "registrations",

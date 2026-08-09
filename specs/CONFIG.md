@@ -27,6 +27,13 @@ hora de gerar o bundle. Mudar o `.env` depois do build não muda nada — precis
 navegador. Chave de API do Firebase pode ir (é pública por design); senha, chave de service
 account ou token de admin, nunca. Ver [`BACKEND.md`](BACKEND.md).
 
+> Consequência prática: o scanner de segredos do Netlify barra o deploy ao achar esses valores
+> dentro do `dist/`. A saída é declarar as chaves em `SECRETS_SCAN_OMIT_KEYS` — nunca desligar o
+> scanner inteiro. Passo a passo no [README](../README.md).
+>
+> Se uma variável nova **não** puder aparecer no bundle, ela não pode ser `VITE_*`. Não existe
+> meio-termo: o Vite inlina tudo que tem esse prefixo.
+
 ### `VITE_DATABASE_TARGET_ENV`
 
 Diz em qual ramo do Realtime Database o app grava: `staging` ou `production`.

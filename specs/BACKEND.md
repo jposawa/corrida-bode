@@ -70,7 +70,9 @@ corrida-bode/
 │       ├── email: "maria@..."
 │       ├── photoURL: "https://..."
 │       ├── createdAt: 1754524800000  ← só no primeiro login
-│       └── lastLoginAt: 1754524800000
+│       ├── lastLoginAt: 1754524800000
+│       └── appSettings/
+│           └── appTheme: "dark"      ← preferências, lidas uma vez no login
 │
 ├── registrations/
 │   └── {registrationId}/
@@ -155,6 +157,27 @@ objeto solto, a identidade fica para trás. Com o campo repetido, o registro se 
 A regra de segurança valida que o campo bate com a chave (`newData.val() === $userId`), então a
 duplicação não pode divergir. Sem essa validação, duplicar dado seria criar duas fontes de
 verdade — que é justamente o que não se quer.
+
+### Preferências: dois lugares, leitura única
+
+`appSettings` vive em dois lugares ao mesmo tempo:
+
+| Onde | Quando vale | Por quê |
+|------|-------------|---------|
+| `localStorage` | sempre, inclusive sem login | é lido de forma síncrona ao abrir a página, então o tema não pisca |
+| `users/{uid}/appSettings` | só com login | faz a preferência acompanhar a pessoa em outro aparelho |
+
+**A leitura do banco é `get`, uma vez por login — nunca `onValue`.** Uma subscrição mantém
+conexão aberta e re-renderiza a cada mudança; para preferência que a própria pessoa altera na
+tela em que está, isso é custo sem contrapartida.
+
+Quando os dois discordam:
+
+- **conta tem tema salvo** → o da conta vence, e sobrescreve o local
+- **conta não tem** (primeiro login) → o tema local sobe para a conta
+
+A conta ganhar é o que serve para quem entra num aparelho novo. Semear com o valor local é o que
+evita perder a escolha de quem ajustou o tema antes de entrar.
 
 ### Login e criação de conta são a mesma escrita
 
@@ -262,9 +285,36 @@ Vão no Console do Firebase → Realtime Database → Regras.
 > ao lado do que estiver lá. Se não houver nada além do padrão, aí sim ele pode ser o documento
 > inteiro — bastando remover a linha `"COMENTARIO"`.
 
-Dentro do nosso nó, tudo fica sob `$targetEnv`, que é uma **variável de caminho**: ela casa com
-o nome do ramo (`staging` ou `production`) e fica disponível dentro das regras. Assim o bloco é
-escrito uma vez e vale para os dois ambientes.
+Tudo fica sob `$targetEnv`, uma **variável de caminho**: casa com o nome do ramo (`staging` ou
+`production`) e fica disponível dentro das regras. O bloco é escrito uma vez e vale para os dois.
+
+### O que publicar hoje
+
+Só `users` existe no código. Regra para o que existe, não para o que está planejado:
+
+```json
+{
+  "rules": {
+    "corrida-bode": {
+      "$targetEnv": {
+        "users": {
+          "$userId": {
+            ".read": "auth.uid === $userId",
+            ".write": "auth.uid === $userId"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+`.read` e `.write` são a fechadura — sem eles o banco é público. Não há substituto: validação de
+formulário não protege nada, porque quem quiser burlar chama a API direto.
+
+### Quando o formulário passar a gravar
+
+Aí entram `registrations`, `registrationsByUser`, `admins` e `eventInfo`:
 
 ```json
 {
@@ -277,18 +327,8 @@ escrito uma vez e vale para os dois ambientes.
 
         "users": {
           "$userId": {
-            ".read": "auth != null && (auth.uid === $userId || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
-            ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')",
-
-            ".validate": "newData.hasChildren(['uid'])",
-
-            "uid": { ".validate": "newData.val() === $userId" },
-            "email": { ".validate": "newData.isString()" },
-            "displayName": { ".validate": "newData.isString()" },
-            "photoURL": { ".validate": "newData.isString()" },
-            "createdAt": { ".validate": "newData.isNumber()" },
-            "lastLoginAt": { ".validate": "newData.isNumber()" },
-            "$other": { ".validate": false }
+            ".read": "auth.uid === $userId || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true",
+            ".write": "auth.uid === $userId"
           }
         },
 
@@ -298,27 +338,21 @@ escrito uma vez e vale para os dois ambientes.
           "$registrationId": {
             ".read": "auth != null && (data.child('userId').val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
 
-            ".write": "auth != null && ($targetEnv === 'staging' || $targetEnv === 'production') && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
+            ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || data.child('userId').val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true)",
 
             "paymentStatus": {
               ".write": "root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true"
             },
             "isDonationDelivered": {
               ".write": "root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true"
-            },
-
-            ".validate": "newData.hasChildren(['fullName', 'phone', 'city', 'shirtSize', 'distance', 'userId'])",
-
-            "shirtSize": { ".validate": "newData.val().matches(/^(P|M|G|GG)$/)" },
-            "distance":  { ".validate": "newData.val() === 3 || newData.val() === 5 || newData.val() === 10" },
-            "userId":    { ".validate": "newData.val() === auth.uid || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true" }
+            }
           }
         },
 
         "registrationsByUser": {
           "$userId": {
             ".read": "auth.uid === $userId || root.child('corrida-bode').child($targetEnv).child('admins').child(auth.uid).val() === true",
-            ".write": "auth.uid === $userId && ($targetEnv === 'staging' || $targetEnv === 'production')"
+            ".write": "auth.uid === $userId"
           }
         },
 
@@ -341,23 +375,27 @@ escrito uma vez e vale para os dois ambientes.
 > Realtime Database são JSON puro — não existe variável nem função para reaproveitar. Se o
 > `APP_KEY` mudar, **todas** essas ocorrências mudam junto, e o app para de ler o que grava.
 
-> **A checagem `$targetEnv === 'staging' || 'production'` está dentro do `.write`, não num
-> `.validate` no nível de cima — e isso é de propósito.** Regra `.validate` só é avaliada no nó
-> escrito e nos filhos dele; **regra de ancestral não é reavaliada**. Um `.validate` em
-> `$targetEnv` não seria consultado ao gravar em `$targetEnv/registrations/{id}`, e daí qualquer
-> pessoa logada poderia criar um ramo `/lixo/registrations/...` só mudando o caminho. Dentro do
-> `.write` a checagem roda, porque a regra de escrita avaliada é a do caminho gravado.
+### Não usamos `.validate`
+
+As regras cuidam de **quem pode ler e escrever o quê**, e só disso. Nenhum `.validate` de
+formato.
+
+O motivo é o custo assimétrico: `.validate` recusa a escrita **sem erro na tela** — o dado
+simplesmente não salva. Um campo novo esquecido nas regras vira um bug silencioso que só aparece
+quando alguém repara que a preferência não persistiu. Para um app deste tamanho, esse risco é
+maior que o de alguém forjar um `shirtSize` inválido de propósito.
+
+Se um dia aparecer lixo de verdade no banco, aí sim vale acrescentar validação no campo
+específico que sujou — não antes.
+
+**O que não é opcional é `.read` / `.write`.** É o que impede uma pessoa de ler o telefone da
+outra. Validação de formulário não substitui isso: quem quiser burlar chama a API direto, sem
+passar pela tela.
 
 ### O que cada decisão está segurando
 
 **Cada pessoa só escreve o próprio `users/{uid}`.** `auth.uid === $userId` amarra a escrita à
-chave, então ninguém sobrescreve o registro de outro. O `.validate` do campo `uid` fecha o
-cerco: o valor gravado tem que ser igual à chave, e a duplicação nunca diverge.
-
-**`"$other": { ".validate": false }` recusa campo desconhecido.** Sem isso, qualquer pessoa
-logada poderia enfiar dado arbitrário dentro do próprio registro e usar o banco como depósito.
-O preço é que **acrescentar um campo novo em `users` exige atualizar as regras junto** — é
-proposital: campo novo em dado de usuário merece uma decisão consciente.
+chave, então ninguém sobrescreve o registro de outro.
 
 **Ler `/registrations` inteiro só admin.** A permissão de ler a lista completa e a de ler uma
 inscrição específica são separadas de propósito. Participante lê a dele; organização lê todas.
@@ -375,10 +413,6 @@ apertam mais ainda dentro do que sobrou.
 **`admins` com `.read: false`.** Ninguém lê a lista pelo app. As regras conseguem consultá-la
 mesmo assim (`root.child(...)` roda no servidor, fora das regras de leitura), então a
 verificação funciona sem expor quem são os organizadores.
-
-**`.validate` em `shirtSize` e `distance`.** Validação no formulário existe para ajudar quem
-preenche; ela não protege nada, porque a requisição pode ser feita fora do app. Ver
-[`DOMAIN.md`](DOMAIN.md).
 
 ### Antes de abrir para o público
 
@@ -401,7 +435,7 @@ preenche; ela não protege nada, porque a requisição pode ser feita fora do ap
 Chave de service account é coisa de servidor — e este projeto não tem servidor.
 
 **Nunca confiar em validação de formulário como segurança.** O formulário é conveniência para
-quem preenche. Quem quiser burlar chama a API direto. O que vale é o `.validate`.
+quem preenche. Quem quiser burlar chama a API direto. O que vale é o `.read` / `.write`.
 
 **Nunca guardar dado sensível aqui.** Sem CPF, sem dado de cartão, sem comprovante de
 pagamento com número de conta. O app registra que o pagamento foi aprovado, não como.

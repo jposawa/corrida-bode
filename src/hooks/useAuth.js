@@ -11,14 +11,6 @@ import {
 	signOutCurrentUser,
 } from "@/services";
 
-/**
- * Lê o estado de login e expõe as ações de entrar e sair.
- *
- * Só lê os atoms — quem alimenta eles é o `useAuthListener`, chamado uma única vez
- * no `App.jsx`. Por isso este hook pode ser usado em quantas telas quiser.
- *
- * @returns {Object} estado e ações de autenticação
- */
 export const useAuth = () => {
 	const currentUser = useRecoilValue(currentUserAtom);
 	const authStatus = useRecoilValue(authStatusAtom);
@@ -35,26 +27,21 @@ export const useAuth = () => {
 		try {
 			const authUser = await signInWithGoogle();
 
-			// Gravar o perfil é uma segunda etapa, com tratamento próprio: se ela
-			// falhar, a pessoa CONTINUA logada. Deixar o erro subir aqui derrubaria
-			// um login que na verdade deu certo.
+			// Falha ao gravar o perfil não derruba o login, que já deu certo.
 			try {
 				await saveUserProfile(authUser);
 			} catch (saveError) {
-				console.error("[useAuth] Falha ao salvar o usuário no banco", saveError);
+				console.error("[useAuth] Falha ao salvar o usuário", saveError);
 				setWarningMessage(
 					"Você entrou, mas seus dados não foram salvos. Tente sair e entrar de novo.",
 				);
 			}
 		} catch (signInError) {
-			// Fechar o popup não é erro — é desistência. Não vira mensagem vermelha.
 			if (!getIsAuthCancelledByUser(signInError)) {
 				console.error("[useAuth] Falha no login", signInError);
 				setErrorMessage(getAuthErrorMessage(signInError));
 			}
 		} finally {
-			// finally garante que o botão volte do estado "entrando..." mesmo quando
-			// dá erro. Num try/catch sem ele, o botão ficaria travado para sempre.
 			setIsProcessing(false);
 		}
 	};

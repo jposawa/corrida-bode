@@ -30,6 +30,9 @@
 	align-items: flex-start;
 	justify-content: flex-end;
 	gap: var(--space-3);
+	/* O interruptor de tema tem largura própria. Em tela estreita, ele desce
+	   para a linha de baixo em vez de espremer o nome da pessoa. */
+	flex-wrap: wrap;
 }
 
 @media (min-width: 900px) {

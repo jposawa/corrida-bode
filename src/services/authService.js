@@ -7,19 +7,13 @@ import {
 import { firebaseAuth, googleAuthProvider } from "@/lib/firebase";
 
 /**
- * Autenticação com Google.
- *
- * Este arquivo cuida só da identidade. Gravar o usuário no banco é outra
- * responsabilidade e mora em `userService` — separado de propósito: se a escrita
- * no banco falhar, o login continua válido, e quem chama decide o que fazer.
+ * Só identidade. Gravar o usuário no banco é do `userService` — separado para
+ * que uma falha de escrita não derrube um login que deu certo.
  */
 
 /**
- * Converte o usuário do Firebase num objeto simples do app.
- *
- * O objeto do Firebase carrega métodos e estado interno do SDK. Guardar ele num
- * atom do Recoil espalharia o SDK pelo app inteiro — e o Recoil congela o que
- * recebe, o que dá conflito. Este recorte mantém só o que a UI usa.
+ * Recorta o objeto do Firebase. O SDK carrega métodos e estado interno que o
+ * Recoil congelaria.
  *
  * @param {Object | null} firebaseUser
  * @returns {Object | null}
@@ -37,49 +31,35 @@ export const toAppUser = (firebaseUser) => {
 	};
 };
 
-/**
- * Traduz os códigos de erro do Firebase para mensagens em pt-br.
- *
- * @param {Error & { code?: string }} error
- * @returns {string}
- */
-export const getAuthErrorMessage = (error) => {
-	// Fechar o popup é uma decisão da pessoa, não uma falha. Tratado como erro
-	// silencioso lá em cima — aqui só existe pelo caso de alguém querer exibir.
-	if (error?.code === "auth/popup-closed-by-user") {
-		return "Login cancelado.";
-	}
-
-	if (error?.code === "auth/popup-blocked") {
-		return "O navegador bloqueou a janela de login. Libere os pop-ups e tente de novo.";
-	}
-
-	if (error?.code === "auth/network-request-failed") {
-		return "Sem conexão. Verifique a internet e tente de novo.";
-	}
-
-	if (error?.code === "auth/unauthorized-domain") {
-		return "Este endereço não está liberado no Firebase. Avise a organização.";
-	}
-
-	// Erro de configuração, não do usuário: o provedor Google não foi habilitado
-	// no Console. É o primeiro erro que aparece num projeto Firebase recém-criado.
-	if (error?.code === "auth/operation-not-allowed") {
-		return "Login com Google não está habilitado no Firebase. Avise a organização.";
-	}
-
-	return "Não foi possível entrar. Tente de novo em instantes.";
+const AUTH_ERROR_MESSAGES = {
+	"auth/popup-closed-by-user": "Login cancelado.",
+	"auth/popup-blocked":
+		"O navegador bloqueou a janela de login. Libere os pop-ups e tente de novo.",
+	"auth/network-request-failed":
+		"Sem conexão. Verifique a internet e tente de novo.",
+	"auth/unauthorized-domain":
+		"Este endereço não está liberado no Firebase. Avise a organização.",
+	"auth/operation-not-allowed":
+		"Login com Google não está habilitado no Firebase. Avise a organização.",
 };
 
-/**
- * Códigos que significam "a pessoa desistiu", não "deu erro".
- * Não devem virar mensagem vermelha na tela.
- */
+/** Fechar o popup é desistência, não falha — não vira mensagem de erro. */
 const CANCELLED_BY_USER_CODES = [
 	"auth/popup-closed-by-user",
 	"auth/cancelled-popup-request",
 	"auth/user-cancelled",
 ];
+
+/**
+ * @param {Error & { code?: string }} error
+ * @returns {string}
+ */
+export const getAuthErrorMessage = (error) => {
+	return (
+		AUTH_ERROR_MESSAGES[error?.code] ??
+		"Não foi possível entrar. Tente de novo em instantes."
+	);
+};
 
 /**
  * @param {Error & { code?: string }} error
@@ -90,9 +70,7 @@ export const getIsAuthCancelledByUser = (error) => {
 };
 
 /**
- * Abre o popup do Google.
- *
- * @returns {Promise<Object>} O usuário autenticado, no formato do app
+ * @returns {Promise<Object>}
  */
 export const signInWithGoogle = async () => {
 	const credential = await signInWithPopup(firebaseAuth, googleAuthProvider);
@@ -101,8 +79,6 @@ export const signInWithGoogle = async () => {
 };
 
 /**
- * Encerra a sessão.
- *
  * @returns {Promise<void>}
  */
 export const signOutCurrentUser = async () => {
@@ -110,15 +86,11 @@ export const signOutCurrentUser = async () => {
 };
 
 /**
- * Registra um observador do estado de login.
- *
- * O Firebase restaura a sessão do armazenamento local de forma assíncrona: no
- * primeiro instante depois de carregar a página ele ainda não sabe se há alguém
- * logado. Por isso o callback é chamado uma vez logo de cara — com o usuário ou
- * com `null` — e é esse primeiro disparo que encerra o estado de "carregando".
+ * O Firebase restaura a sessão de forma assíncrona: o callback dispara uma vez
+ * logo de cara (com usuário ou null), e é isso que encerra o estado "loading".
  *
  * @param {(user: Object | null) => void} onUserChange
- * @returns {() => void} Função para cancelar o observador
+ * @returns {() => void} Cancela o observador
  */
 export const observeAuthState = (onUserChange) => {
 	return onAuthStateChanged(firebaseAuth, (firebaseUser) => {

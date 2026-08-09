@@ -126,15 +126,19 @@ Só exports nomeados — nada de `export default`.
 
 ```
 hooks/
-  useAuth.js           ← lê o estado de login, expõe entrar/sair
-  useAuthListener.js   ← registra o observador do Firebase
-  index.js             ← re-exporta tudo: export * from "./useXxx"
+  useAppSettings.js      ← lê e altera preferências (tema)
+  useAppSettingsSync.js  ← puxa as preferências da conta no login
+  useAuth.js             ← lê o estado de login, expõe entrar/sair
+  useAuthListener.js     ← registra o observador do Firebase
+  index.js               ← re-exporta tudo: export * from "./useXxx"
 ```
 
-> **`useAuthListener` é chamado uma única vez, no `App.jsx`.** Cada chamada registra um
-> observador novo no Firebase; usado em várias telas, criaria observadores duplicados escrevendo
-> no mesmo atom. Ler quem está logado é papel do `useAuth`, que não registra nada e pode ser
-> usado à vontade.
+> **`useAuthListener` e `useAppSettingsSync` são chamados uma única vez, no `App.jsx`.** Cada
+> chamada registra algo global — um observador no Firebase, uma leitura de preferências por
+> login. Repetidos em várias telas, viram observadores duplicados e leituras redundantes.
+>
+> `useAuth` e `useAppSettings` só leem estado e expõem ações. Não registram nada, e podem ser
+> usados em quantas telas quiser.
 
 ### `services/`
 

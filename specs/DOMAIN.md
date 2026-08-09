@@ -100,6 +100,11 @@ O que o app **guarda** é um espelho do perfil, em `users/{uid}`:
 | `photoURL` | Vem do Google. Pode não existir |
 | `createdAt` | Definido só no primeiro login |
 | `lastLoginAt` | Atualizado a cada login explícito |
+| `appSettings` | Preferências. Hoje só `appTheme` (`light` \| `dark`) |
+
+**Preferência não exige login.** `appSettings` espelha o que já está no `localStorage`; sem
+conta, a escolha continua valendo, só não viaja para outro aparelho. Ver
+[`BACKEND.md`](BACKEND.md).
 
 **Entrar e criar conta são a mesma operação.** O Google resolve quem a pessoa é; do lado do app
 os dois casos gravam o mesmo registro, e a única diferença é o `createdAt`, que não é

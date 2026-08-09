@@ -119,6 +119,40 @@ VITE_DATABASE_TARGET_ENV
 Sem elas o build passa normalmente e o app quebra ao abrir — as variáveis são lidas no
 momento do build, não em tempo de execução.
 
+### O scanner de segredos do Netlify barra o build
+
+Sintoma: o deploy falha com aviso de segredo exposto no `dist/`.
+
+Causa: o Vite **inlina** as `VITE_*` dentro do bundle. O scanner do Netlify procura os valores
+das variáveis do painel dentro dos arquivos gerados, encontra, e interrompe o deploy.
+
+O scanner está certo em princípio — ele existe justamente para pegar uma chave secreta que
+vazou para o build. O que ele não sabe é que **a configuração web do Firebase é pública por
+projeto**: ela vai para o navegador de qualquer forma, e o que protege os dados são as Regras de
+Segurança do Realtime Database, não o sigilo dessas chaves.
+
+Solução — cadastrar mais uma variável no painel, listando as chaves que podem aparecer no
+bundle:
+
+```
+SECRETS_SCAN_OMIT_KEYS
+```
+
+Valor (uma linha, separado por vírgula, sem espaços):
+
+```
+VITE_FIREBASE_API_KEY,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_DATABASE_URL,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID,VITE_FIREBASE_MEASUREMENT_ID,VITE_DATABASE_TARGET_ENV
+```
+
+> **Não usar `SECRETS_SCAN_ENABLED=false`.** Isso desliga a verificação inteira, e aí o dia em
+> que alguém cadastrar uma chave de service account por engano o deploy passa sem reclamar.
+> `SECRETS_SCAN_OMIT_KEYS` dispensa **só** as chaves listadas; qualquer variável nova continua
+> sendo vigiada.
+>
+> A regra para decidir se uma chave nova entra nessa lista: ela pode ser lida por qualquer
+> pessoa que abrir o navegador? Se sim, ela nunca deveria ter sido secreta. Se não, ela não pode
+> estar num `VITE_*` — ver [CONFIG.md](specs/CONFIG.md).
+
 ### Rotas que não são a raiz — `public/_redirects` é obrigatório
 
 O arquivo [public/_redirects](public/_redirects) manda qualquer caminho para o `index.html`
