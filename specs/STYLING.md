@@ -120,95 +120,12 @@ A unidade se escolhe pelo que o valor é *relativo a*.
 | `vw` / `vh` | Viewport | Seção de tela cheia, altura de hero |
 | `px` | Pixel físico | Borda, sombra, limites finos |
 
-### `px` — travas e fios de cabelo
+Três detalhes que não são óbvios:
 
-Usar `px` quando o valor **não pode** escalar com fonte ou viewport:
-
-```css
-/* bordas — sempre px */
-border: 1px solid var(--color-border);
-outline: 2px solid var(--color-primary);
-
-/* sombras — offset e blur em px */
-box-shadow: var(--shadow-md);
-
-/* limites finos */
-max-width: 1126px;
-min-height: 44px; /* piso do alvo de toque */
-```
-
-### `rem` — escala global
-
-Para espaçamento e tamanho de fonte que precisam escalar junto com a fonte raiz.
-
-```css
-gap: var(--space-4);
-padding: var(--space-3) var(--space-5);
-
-font-size: 0.875rem;   /* pequeno / legenda */
-font-size: 1rem;       /* corpo */
-font-size: 1.25rem;    /* destaque */
-```
-
-### `em` — relativo ao contexto
-
-Dentro de um componente, quando o tamanho deve ser proporcional à fonte *do próprio
-componente*.
-
-```css
-/* título dentro de um card — acompanha a fonte do card */
-.cardTitle {
-  font-size: 1.3em;
-  margin-bottom: 0.5em;
-}
-
-/* padding do botão acompanha a fonte dele */
-.button {
-  padding: 0.6em 1.2em;
-}
-
-/* ícone ao lado do texto fica proporcional */
-.icon {
-  width: 1em;
-  height: 1em;
-}
-```
-
-**Evitar encadear `em`** — `em` dentro de `em` multiplica e o tamanho vai desandando.
-Passando de dois níveis de aninhamento, trocar por `rem`.
-
-### `%` — containers fluidos
-
-Para largura que precisa preencher o pai proporcionalmente. Nunca usar `%` para altura, a menos
-que o pai tenha altura explícita.
-
-```css
-.input {
-  width: 100%;
-}
-
-.sidebar {
-  width: 30%;
-  min-width: 200px; /* piso em px */
-}
-```
-
-### `vw` / `vh` — seções presas ao viewport
-
-Usar com parcimônia. Serve para hero e overlay de tela cheia.
-
-```css
-.hero {
-  min-height: 60vh;
-}
-```
-
-Evitar `100vh` no celular — usar `100svh` (small viewport height), que desconta a barra do
-navegador. Com `100vh` o conteúdo fica cortado atrás da barra de endereço no iOS.
-
-```css
-min-height: 100svh;
-```
+- **Não encadear `em`.** `em` dentro de `em` multiplica. Passando de dois níveis, trocar por `rem`.
+- **`%` de altura só funciona** se o pai tiver altura explícita.
+- **`100svh`, nunca `100vh` no celular.** `vh` ignora a barra do navegador e o conteúdo fica
+  cortado atrás dela no iOS.
 
 ---
 

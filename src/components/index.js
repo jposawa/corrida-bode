@@ -4,4 +4,4 @@ export * from "./CustomSelect";
 export * from "./MainMenu";
 export * from "./OptionGroup";
 export * from "./SectionCard";
-export * from "./ThemeToggle";
+export * from "./Toggle";

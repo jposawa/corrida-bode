@@ -19,13 +19,6 @@ import { maskPhoneInput, validateRegistration } from "@/helpers";
 
 import styles from "./RegistrationForm.module.css";
 
-/**
- * Estado inicial do formulário.
- *
- * Fica fora do componente porque não depende de nada dele. Se ficasse dentro,
- * um objeto novo seria criado a cada render — sem quebrar nada aqui, mas é
- * trabalho à toa.
- */
 const EMPTY_FORM_VALUES = {
 	// obrigatórios
 	fullName: "",
@@ -43,11 +36,6 @@ const EMPTY_FORM_VALUES = {
 };
 
 /**
- * Formulário de inscrição na corrida.
- *
- * É um fragment, não um component: conhece as regras da inscrição e conduz o
- * fluxo de envio. Ver `specs/STRUCTURE.md`.
- *
  * @param {Object} props
  * @param {(values: Object) => void} [props.onSubmit] - Recebe os dados já validados
  */

@@ -28,34 +28,6 @@ export const readNode = async (...segments) => {
 };
 
 /**
- * Converte a coleção (`{ id: item }`) em lista, com o id dentro de cada item.
- *
- * @param {...(string | number)} segments
- * @returns {Promise<Array<Object>>}
- */
-export const readNodeAsList = async (...segments) => {
-	const value = await readNode(...segments);
-
-	if (!value) {
-		return [];
-	}
-
-	return Object.entries(value).map(([id, item]) => {
-		return { id, ...item };
-	});
-};
-
-/**
- * @param {...(string | number)} segments
- * @returns {Promise<boolean>}
- */
-export const nodeExists = async (...segments) => {
-	const value = await readNode(...segments);
-
-	return value !== null;
-};
-
-/**
  * Mescla campos no nó. `update` em vez de `set`: `set` apaga o que não for enviado.
  *
  * @param {string[]} segments

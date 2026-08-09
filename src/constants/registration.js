@@ -63,9 +63,3 @@ export const PAYMENT_STATUS = {
 	rejected: "rejected",
 };
 
-/** Texto de cada situação, para exibir na tela. */
-export const PAYMENT_STATUS_LABELS = {
-	pending: "Aguardando confirmação",
-	approved: "Pagamento aprovado",
-	rejected: "Pagamento recusado",
-};

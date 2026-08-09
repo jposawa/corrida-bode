@@ -62,12 +62,26 @@ Ao acrescentar uma variável nova, adicionar em **ambos** — no `.env` com o va
 
 ---
 
-## Configuração em tempo de execução
+## Configuração em tempo de execução — `clientConfig`
 
-Valor que a organização precisa mudar sem chamar ninguém para fazer deploy — endereço do
-evento, horário da largada, se as inscrições estão abertas — vai no Realtime Database, não em
-variável de ambiente.
+Valor que precisa mudar **sem deploy** vai no Realtime Database, no nó
+`corrida-bode/{env}/clientConfig`, editado à mão no Console do Firebase.
 
-Ler pelo `services/`, guardar num atom em `globalState/` e consumir dali.
+| Chave | Padrão | O que faz |
+|-------|--------|-----------|
+| `isDebug` | `false` | Liga logs de diagnóstico |
+| `isRegistrationOpen` | `true` | Fecha as inscrições sem mexer no código |
 
-Ver `EventInfo` em [`DOMAIN.md`](DOMAIN.md).
+Os padrões ficam em `BASE_CLIENT_CONFIG` (`constants/settings.js`) e valem enquanto o banco não
+responde ou quando o nó ainda não existe. O que vem do banco é mesclado por cima.
+
+```js
+const { isDebug, isRegistrationOpen } = useClientConfig()
+```
+
+Carregado uma vez pelo `useClientConfigSync`, chamado só no `App.jsx`. Leitura com `get`, sem
+subscrição — mudança de config vale no próximo carregamento da página.
+
+**Só hook e componente leem config.** Um helper é função pura e não pode alcançar o atom nem o
+service (ver [`STANDARDS.md`](STANDARDS.md)). Se um helper precisa de comportamento condicional,
+quem chama passa o valor — ou o log vive na camada de cima.

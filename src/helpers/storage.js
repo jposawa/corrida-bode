@@ -46,13 +46,3 @@ export const loadStorage = (key, options = {}) => {
 		return null;
 	}
 };
-
-/**
- * @param {string} key
- * @param {boolean} [isPersistent=false]
- */
-export const removeStorage = (key, isPersistent = false) => {
-	const storage = isPersistent ? localStorage : sessionStorage;
-
-	storage.removeItem(withPrefix(key));
-};

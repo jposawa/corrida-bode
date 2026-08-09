@@ -17,6 +17,7 @@ export const DATABASE_TARGET_ENV =
 export const USER_SETTINGS_NODE = "appSettings";
 
 export const DATABASE_NODES = {
+	clientConfig: "clientConfig",
 	users: "users",
 	registrations: "registrations",
 	registrationsByUser: "registrationsByUser",

@@ -3,20 +3,14 @@ import clsx from "clsx";
 import styles from "./OptionGroup.module.css";
 
 /**
- * Grupo de escolha única, desenhado como cartões clicáveis.
- *
- * Por baixo são `<input type="radio">` de verdade, só escondidos visualmente.
- * Isso mantém de graça o que um `<div>` clicável perderia: navegação por Tab,
- * seleção pelas setas do teclado e leitura correta por leitor de tela.
- *
- * O `<fieldset>` + `<legend>` é o que agrupa as opções semanticamente — sem ele,
- * o leitor de tela anuncia "3 km" sem dizer que a pergunta era a distância.
+ * Escolha única em cartões. Usa `<input type="radio">` escondido para manter
+ * navegação por teclado e leitor de tela.
  *
  * @param {Object} props
- * @param {string} props.name - Nome do grupo. Precisa ser único na página
- * @param {string} props.label - Pergunta mostrada acima das opções
+ * @param {string} props.name - Único na página
+ * @param {string} props.label
  * @param {Array<{ value: string | number, label: string, description?: string }>} props.options
- * @param {string | number} [props.value] - Opção selecionada agora
+ * @param {string | number} [props.value]
  * @param {(value: string | number) => void} props.onChange
  * @param {string} [props.errorMessage]
  * @param {boolean} [props.isOptional]
@@ -35,9 +29,8 @@ export const OptionGroup = ({
 	const hasError = Boolean(errorMessage);
 
 	const handleOptionChange = (event) => {
+		// value do input é sempre string, mesmo com opção numérica (3, 5, 10).
 		const selectedOption = options.find((option) => {
-			// O value do input é sempre string, mesmo quando a opção é número (3, 5, 10).
-			// Comparar como texto evita o clássico "3" !== 3.
 			return String(option.value) === event.target.value;
 		});
 

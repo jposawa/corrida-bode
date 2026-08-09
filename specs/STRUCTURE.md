@@ -33,6 +33,30 @@ Peças de UI reutilizáveis. Principalmente visuais, mas podem ter estado própr
 A regra: se a lógica se resolve sozinha ali dentro e não vaza regra de negócio para fora,
 é componente.
 
+#### Nada de wrapper para caso específico
+
+Componente genérico é usado **direto no ponto de uso, com props**. Não criar um componente novo
+só para fixar props de um caso.
+
+```jsx
+// Bom — o genérico, configurado onde é usado
+<Toggle
+  label="Tema escuro"
+  isChecked={isDarkTheme}
+  onChange={setIsDarkTheme}
+  iconOff={<MdLightMode />}
+  iconOn={<MdDarkMode />}
+/>
+
+// Ruim — wrapper que só repassa props fixas
+// components/ThemeToggle/ThemeToggle.jsx
+export const ThemeToggle = () => <Toggle label="Tema escuro" ... />
+```
+
+O wrapper não elimina repetição (é um uso só), esconde quais props existem, e cria um arquivo
+que precisa ser aberto para entender o que a tela faz. Se o mesmo conjunto de props aparecer em
+três telas, aí sim vale extrair — e nunca antes.
+
 Uma pasta por componente:
 
 ```
@@ -130,15 +154,18 @@ hooks/
   useAppSettingsSync.js  ← puxa as preferências da conta no login
   useAuth.js             ← lê o estado de login, expõe entrar/sair
   useAuthListener.js     ← registra o observador do Firebase
+  useClientConfig.js     ← lê a config do app
+  useClientConfigSync.js ← carrega a config do banco
   index.js               ← re-exporta tudo: export * from "./useXxx"
 ```
 
-> **`useAuthListener` e `useAppSettingsSync` são chamados uma única vez, no `App.jsx`.** Cada
-> chamada registra algo global — um observador no Firebase, uma leitura de preferências por
-> login. Repetidos em várias telas, viram observadores duplicados e leituras redundantes.
+Os hooks vêm em pares: um que **carrega** e um que **lê**.
+
+> **Os `*Sync` (e o `useAuthListener`) são chamados uma única vez, no `App.jsx`.** Cada chamada
+> dispara uma leitura no banco ou registra um observador. Repetidos em várias telas, viram
+> requisições duplicadas.
 >
-> `useAuth` e `useAppSettings` só leem estado e expõem ações. Não registram nada, e podem ser
-> usados em quantas telas quiser.
+> Os outros só leem atom e expõem ações — podem ser usados em quantas telas quiser.
 
 ### `services/`
 

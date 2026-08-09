@@ -32,9 +32,9 @@ export const useAppSettings = () => {
 		);
 	};
 
-	const toggleTheme = () => {
-		changeTheme(isDarkTheme ? APP_THEMES.light : APP_THEMES.dark);
+	const setIsDarkTheme = (isDark) => {
+		changeTheme(isDark ? APP_THEMES.dark : APP_THEMES.light);
 	};
 
-	return { theme, isDarkTheme, applyTheme, changeTheme, toggleTheme };
+	return { theme, isDarkTheme, applyTheme, setIsDarkTheme };
 };

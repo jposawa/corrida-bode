@@ -1,17 +1,24 @@
 import clsx from "clsx";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
 
-import { MainMenu, ThemeToggle } from "./components";
+import { MainMenu, Toggle } from "./components";
 import { UserMenu } from "./fragments";
-import { useAppSettings, useAppSettingsSync, useAuthListener } from "./hooks";
+import {
+	useAppSettings,
+	useAppSettingsSync,
+	useAuthListener,
+	useClientConfigSync,
+} from "./hooks";
 import { AppRouter } from "./pages";
 
 import styles from "./App.module.css";
 
 // O App não renderiza <main> — quem faz isso é cada página. Ver specs/STRUCTURE.md.
 function App() {
-	const { theme } = useAppSettings();
+	const { theme, isDarkTheme, setIsDarkTheme } = useAppSettings();
 
 	// Registram coisas globais: chamar só aqui.
+	useClientConfigSync();
 	useAuthListener();
 	useAppSettingsSync();
 
@@ -22,7 +29,14 @@ function App() {
 			<div className={styles.contentContainer}>
 				<header className={styles.topBar}>
 					<UserMenu />
-					<ThemeToggle />
+
+					<Toggle
+						label="Tema escuro"
+						isChecked={isDarkTheme}
+						onChange={setIsDarkTheme}
+						iconOff={<MdLightMode />}
+						iconOn={<MdDarkMode />}
+					/>
 				</header>
 
 				<AppRouter />
